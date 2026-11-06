@@ -87,18 +87,10 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
 
 ## Known bugs / open items
 
-- **`statsfile.py` follows the wrong layout.** The format measured by `../lox-datamanager`
-  (`src/main/statfile.ts`, from LoxStatEdit + sarnau) is:
-  - header: `u16 valueCount, u16 unknown (often 0x8000), u32 controlType, i32 textLen, utf8 name, 0x00`,
-    zero-padded to the record stride;
-  - records: `u16 uuidFrag1 (3rd uuid group), u16 uuidFrag2 (2nd group), u32 ts, valueCount × f64`, padded to the
-    stride. The stride is ambiguous for valueCount ≥ 3 (`8+8n+8` vs slot buckets 1/3/7/10) and must be detected per
-    file.
-  - File names: `<uuid>[_1-9].<YYYYMM>` (the `_N` suffix = statisticV2, e.g. Meter `_1` power, `_2` meter reading),
-    which `NAME_RE` doesn't accept yet.
-  - Timestamps are local wall-clock seconds since 2009.
-
-  Until ported, real files are skipped with "unsupported" warnings. Port `parseStatFile` with its tests.
+- `statsfile.py` is ported from `../lox-datamanager` (`src/main/statfile.ts`; LoxStatEdit + sarnau layout,
+  stride detected per file, `<uuid>[_N].<YYYYMM>` names) but only tested with synthetic files built by
+  `tests/build_statfile.py`. Drop real files into `tests/fixtures/` (`test_real_fixture_files` picks them up).
+  statisticV2 suffixes are mapped for Meter only (`history.METER_V2`); others get `stat<N>_<i>` state names.
 - Validate on a real Miniserver (PLAN.md): fslist format, autht on `/dev/fsget`, user rights, `wss://`, event padding,
   restore via Loxone Config. `check --dump DIR` collects the raw answers → add them to `tests/fixtures/`.
 - HTTP tokens are cached per process only (`auth.TOKENS`); persist them if the Miniserver's token list fills up.

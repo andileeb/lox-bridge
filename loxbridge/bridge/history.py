@@ -27,19 +27,27 @@ def snapshot_structure(store: Destination, ms: str, snapshot: str, manifest: dic
     raise FileNotFoundError("no LoxAPP3.json in the snapshot and no cached structure: enable the bridge once")
 
 
-def stats_files(manifest: dict) -> list[tuple[str, str]]:
-    """[(path, control uuid)] of statistics files in the snapshot."""
+# statisticV2 files of a Meter (measured by lox-datamanager): _1 power, _2 meter reading(s), _3 storage
+METER_V2 = {1: ["actual"], 2: ["total", "totalNeg"], 3: ["storage"]}
+
+
+def stats_files(manifest: dict) -> list[tuple[str, str, int | None]]:
+    """[(path, control uuid, statisticV2 suffix)] of statistics files in the snapshot."""
     out = []
     for p in manifest["files"]:
         m = NAME_RE.match(p.rsplit("/", 1)[-1])
         if m and p.startswith("stats/"):
-            out.append((p, m["uuid"]))
-    return sorted(out)
+            out.append((p, m["uuid"], int(m["suffix"]) if m["suffix"] else None))
+    return sorted(out, key=lambda x: x[0])
 
 
-def output_states(control: dict, count: int) -> list[str]:
+def output_states(control: dict, count: int, suffix: int | None = None) -> list[str]:
     """Name each value column after the matching live state so history and live data form one series."""
     states = list(control["states"])
+    if suffix:
+        known = METER_V2.get(suffix, []) if control["type"] == "Meter" else []
+        # other statisticV2 controls (EFM, ...) don't follow a known pattern: no guessed state names
+        return [known[i] if i < len(known) else f"stat{suffix}_{i}" for i in range(count)]
     outputs = [o.get("name", "") for o in ((control.get("statistic") or {}).get("outputs") or [])]
     names = []
     for i in range(count):
@@ -65,7 +73,7 @@ def run_import(
 ) -> dict:
     manifest = store.manifest(ms, snapshot)
     structure = snapshot_structure(store, ms, snapshot, manifest, structure_cache)
-    files = [(p, u) for p, u in stats_files(manifest) if controls is None or u in controls]
+    files = [f for f in stats_files(manifest) if controls is None or f[1] in controls]
     skipped, points = [], 0
     writer = None
     fh = open(csv_path, "w", newline="") if csv_path else None
@@ -73,7 +81,7 @@ def run_import(
         if fh:
             writer = csv.writer(fh)
             writer.writerow(["time", "miniserver", "room", "category", "control", "state", "uuid", "value"])
-        for n, (path, cuuid) in enumerate(files, 1):
+        for n, (path, cuuid, suffix) in enumerate(files, 1):
             control = structure.controls.get(cuuid)
             if control is None:
                 skipped.append(f"{path}: control not in structure")
@@ -81,12 +89,14 @@ def run_import(
             with store.open(ms, snapshot, path, manifest) as f:
                 data = f.read()
             try:
-                sf = parse_stats(data, tz)
+                sf = parse_stats(data, path.rsplit("/", 1)[-1], tz)
             except UnsupportedStatsFile as e:
                 log.warning("skipping %s: %s", path, e)
                 skipped.append(f"{path}: {e}")
                 continue
-            names = output_states(control, sf.value_count)
+            if sf.uuid_mismatches:
+                log.warning("%s: %d entries carry another uuid than the file name", path, sf.uuid_mismatches)
+            names = output_states(control, sf.value_count, suffix)
             done_until = progress_get(path) if progress_get else 0
             lines: list[str] = []
             last = done_until

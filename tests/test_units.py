@@ -15,9 +15,8 @@ from loxbridge.bridge.sinks.mqtt import discovery, slug, topic
 from loxbridge.bridge.sinks.webhook import sign
 from loxbridge.miniserver import auth
 from loxbridge.miniserver.listing import parse_listing
-from loxbridge.miniserver.statsfile import UnsupportedStatsFile, build_stats, parse_stats
 from loxbridge.miniserver.structure import parse_structure
-from loxbridge.miniserver.ws import EPOCH_2009, decode_texts, decode_values, lox_uuid, lox_uuid_bytes
+from loxbridge.miniserver.ws import decode_texts, decode_values, lox_uuid, lox_uuid_bytes
 from loxbridge.settings.models import Config, MqttSink, cron_triggers
 from loxbridge.settings.store import Store
 
@@ -125,28 +124,15 @@ def test_token_hash_and_encryption():
     assert plain == "jdev/sys/getjwt/a/b"
 
 
-def test_stats_parser():
-    tz = ZoneInfo("Europe/Vienna")
-    u = "30000000-0000-0003-ffff000000000000"
-    data = build_stats("Power Meter", u, [(100, [1.5, 2.5]), (200, [3.0, 4.0])])
-    sf = parse_stats(data, tz)
-    assert sf.name == "Power Meter" and sf.value_count == 2
-    assert sf.rows[0][1] == [1.5, 2.5]
-    assert sf.rows[1][0] - sf.rows[0][0] == 100
-    # Loxone epoch is local time: 2009-01-01 00:01:40 Vienna == 1230764500 UTC
-    assert sf.rows[0][0] == EPOCH_2009 - 3600 + 100
-    with pytest.raises(UnsupportedStatsFile):
-        parse_stats(data[:-3], tz)
-    with pytest.raises(UnsupportedStatsFile):
-        parse_stats(b"\xff" * 40, tz)
-
-
 def test_output_states_mapping():
     st = parse_structure(FIXTURE)
     meter = st.controls["30000000-0000-0003-ffff000000000000"]
     assert output_states(meter, 2) == ["total", "actual"]
     temp = st.controls["30000000-0000-0001-ffff000000000000"]
     assert output_states(temp, 1) == ["value"]
+    assert output_states(meter, 1, suffix=1) == ["actual"]
+    assert output_states(meter, 2, suffix=2) == ["total", "totalNeg"]
+    assert output_states(temp, 1, suffix=4) == ["stat4_0"]  # no guessing outside Meter
 
 
 def test_line_protocol_escaping():

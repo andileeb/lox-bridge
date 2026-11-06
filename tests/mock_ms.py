@@ -23,6 +23,7 @@ from http import HTTPStatus
 from pathlib import Path
 
 import websockets
+from build_statfile import build_statfile
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
@@ -32,23 +33,29 @@ from websockets.datastructures import Headers
 from websockets.http11 import Request, Response
 
 from loxbridge.miniserver.auth import decrypt_command
-from loxbridge.miniserver.statsfile import build_stats
 from loxbridge.miniserver.ws import EPOCH_2009, lox_uuid_bytes
 
 USER, PASSWORD = "admin", "secret"
 FIXTURE = Path(__file__).parent / "fixtures" / "LoxAPP3.json"
 TEMP_UUID = "30000000-0000-0001-ffff000000000000"
+METER_UUID = "30000000-0000-0003-ffff000000000000"
 
 
 def default_files() -> dict[str, bytes]:
     rows = [(int(time.time()) - EPOCH_2009 - 3600 * (48 - i), [20.0 + i / 10]) for i in range(48)]
+    ym = time.strftime("%Y%m")
+    temp = build_statfile(rows, 1, uuid=TEMP_UUID, yyyymm=ym, name="Temperature")
+    # statisticV2 meter file: _2 = meter reading(s), here 2 values
+    meter = build_statfile([(t, [1000.0 + i, 5.0]) for i, (t, _) in enumerate(rows)], 2, uuid=METER_UUID,
+                           suffix=2, yyyymm=ym, name="Power Meter")
     return {
         "prog/sps_0001_20261001120000.zip": b"PK\x03\x04 fake project " * 50,
         "prog/sps_0002_20261002120000.zip": b"PK\x03\x04 another project " * 50,
         "log/def.log": b"log line\n" * 100,
         "log/broken.log": b"you will never read this",
         "web/LoxAPP3.json": FIXTURE.read_bytes(),
-        f"stats/{TEMP_UUID}.{time.strftime('%Y%m')}": build_stats("Temperature", TEMP_UUID, rows),
+        "stats/" + temp[0]: temp[1],
+        "stats/" + meter[0]: meter[1],
         "sys/empty.bin": b"",
     }
 

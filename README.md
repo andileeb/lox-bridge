@@ -47,7 +47,7 @@ Both use **token auth** (`getkey2` → `getjwt`, Loxone's "Communicating with th
 each HTTPS request with `?autht=<HMAC(token, one-time key)>&user=…`; the bridge authenticates its WebSocket.
 Basic auth is available per Miniserver (*Auth mode: basic*) as a fallback.
 
-**HTTPS and certificates**: Gen 2 serves HTTPS with a certificate for its CloudDNS name
+**HTTPS and certificates**: Miniserver URLs must be `https://` (Gen 2 only). Gen 2 serves HTTPS with a certificate for its CloudDNS name
 `https://<ip-with-dashes>.<serial>.dyndns.loxonecloud.com` (e.g. `192-168-1-77.504F94A0FFEE.dyndns.loxonecloud.com`).
 Use that name with *Verify TLS* on, or the IP with *Verify TLS* off (the default).
 
@@ -65,7 +65,9 @@ Use that name with *Verify TLS* on, or the IP with *Verify TLS* off (the default
 
 ### S3
 
-Pick a preset on *Destinations → Add S3* (AWS, Backblaze B2, Wasabi, Hetzner, Cloudflare R2, MinIO) and press *Test*
+Add as many S3 targets as you like (e.g. MinIO/Garage on the NAS plus one cloud bucket, each with its own mode
+and retention). Each run pulls from the Miniserver once and pushes to every target independently. Pick a preset on
+*Destinations → Add S3* (AWS, Backblaze B2, Wasabi, Hetzner, Cloudflare R2, MinIO) and press *Test*
 (writes, reads and deletes a probe object).
 
 - **dedup** (default): `<prefix>/<ms>/blobs/sha256/ab/cd/<hash>` stored once, `snapshots/<snapshot>.json` manifests,

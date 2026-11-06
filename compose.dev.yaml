@@ -18,9 +18,9 @@ services:
 
   mock-ms:
     build: .
-    entrypoint: ["python", "/tests/mock_ms.py", "--port", "80", "--extra-controls", "50"]
+    entrypoint: ["python", "/tests/mock_ms.py", "--port", "443", "--extra-controls", "50"]
     volumes: ["./tests:/tests:ro"]
-    ports: ["8081:80"]
+    ports: ["8443:443"]
     healthcheck: {disable: true}
 
   s3:

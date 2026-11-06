@@ -14,7 +14,9 @@ from .listing import Entry, parse_listing
 
 log = logging.getLogger(__name__)
 
+_REDIRECT = "redirected (Remote Connect / dns.loxonecloud.com URL?): use the Miniserver's LAN address"
 _HINTS = {
+    301: _REDIRECT, 302: _REDIRECT, 307: _REDIRECT, 308: _REDIRECT,
     401: "wrong user or password",
     403: "user lacks rights (needs 'FTP' / file access for backups)",
     404: "not found",
@@ -86,23 +88,14 @@ class MiniserverHTTP:
         if tok and not force and tok.valid_until - time.time() > auth.REFRESH_BEFORE:
             return tok
         user = urllib.parse.quote(self.user, safe="")
-        last: MiniserverError | None = None
-        for cmd in ("getjwt", "gettoken"):  # getjwt on current firmware, gettoken on older ones
-            k = self._ll(f"jdev/sys/getkey2/{user}")["value"]
-            h = auth.password_hash(self.user, self.password, k["key"], k["salt"], k.get("hashAlg", "SHA1"))
-            try:
-                v = self._ll(f"jdev/sys/{cmd}/{h}/{user}/{auth.PERMISSION_APP}/"
-                             f"{auth.client_uuid(self.base, self.user)}/loxbridge")["value"]
-            except MiniserverError as e:
-                if "401" in str(e) or "403" in str(e):
-                    raise
-                last = e
-                continue
-            tok = auth.Token(v["token"], auth.EPOCH_2009 + int(v.get("validUntil", 0)), k.get("hashAlg", "SHA1"))
-            auth.TOKENS[key] = tok
-            return tok
-        assert last
-        raise last
+        k = self._ll(f"jdev/sys/getkey2/{user}")["value"]
+        alg = k.get("hashAlg") or "SHA1"
+        h = auth.password_hash(self.user, self.password, k["key"], k["salt"], alg)
+        v = self._ll(f"jdev/sys/getjwt/{h}/{user}/{auth.PERMISSION_APP}/"
+                     f"{auth.client_uuid(self.base, self.user)}/loxbridge")["value"]
+        tok = auth.Token(v["token"], auth.EPOCH_2009 + int(v.get("validUntil", 0)), alg)
+        auth.TOKENS[key] = tok
+        return tok
 
     def _url(self, path: str, force_token: bool = False) -> str:
         url = self._plain(path)

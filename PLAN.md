@@ -5,7 +5,7 @@ to be validated against a real Miniserver.
 
 ## Scope
 
-- **Gen 2 Miniservers only.** HTTPS everywhere; no Gen 1 code paths.
+- **Gen 2 Miniservers only.** Miniserver URLs must be `https://` (the bridge then uses `wss://`); no Gen 1 code paths.
 
 ## Transport per job
 
@@ -27,8 +27,8 @@ One module with the hashing and crypto, used by both transports:
 
 - Acquire: `jdev/sys/getkey2/{user}` → `{key, salt, hashAlg}`; `pwHash = HASH(password:salt)` upper-case;
   `hash = HMAC-HASH(key, user:pwHash)`; `jdev/sys/getjwt/{hash}/{user}/{perm}/{uuid}/{info}`. Over HTTPS
-  (backups) plain, falling back to `gettoken` on old firmware. Over the WebSocket encrypted (`keyexchange` + `jdev/sys/enc/`),
-  as the document requires there.
+  (backups) plain; over the WebSocket encrypted (`keyexchange` + `jdev/sys/enc/`), as the document requires there.
+  No `gettoken` fallback (pre-Gen-2 firmware).
 - HTTPS requests: `?autht={HMAC(token, key from a fresh getkey2)}&user={user}`. The getkey2 key is single use, so
   each signed request costs one extra small request. A 401 re-acquires the token once.
 - The JSON `LL.code` wins over the HTTP status (200 with LL code 401 happens).
@@ -51,11 +51,13 @@ Basic auth).
 - **Token storage on the Miniserver**: stable client UUID; one app token per user per process. If the token list grows
   (e.g. many CLI runs), persist tokens encrypted in the DB and kill them on Miniserver removal (needs Basic auth).
 - **Certificates**: Gen 2 certificates match only the CloudDNS name; `verify_tls` is off by default for IP URLs.
-- **Remote Connect / Cloud DNS** URLs redirect; only direct LAN URLs are tested.
+- **Remote Connect** URLs (`dns.loxonecloud.com/<serial>`) redirect; redirects are not followed (the signed
+  `autht` query must not leak to another host) and are reported as "use the LAN address".
 
 ## Still to validate on the real Miniserver
 
-1. The real `/dev/fslist` output format (add as a test fixture).
+1. The real `/dev/fslist` output format: `python -m loxbridge check --dump /work/diag` saves the raw root listing,
+   firmware and a sample of `prog/` and `stats/`; add the files to `tests/fixtures/`.
 2. That `autht` signing works for `/dev/fslist` and `/dev/fsget` (LoxBerry verified it for `jdev` commands), and the
    minimum user rights for `/dev/fsget` and for WebSocket states.
 3. `wss://` on the user's firmware (the Config 10.0 document still says wss is unsupported; Gen 2 firmware supports it).

@@ -30,6 +30,29 @@ def _dest(cfg, dest_id: str | None):
     return make_store(d, _work())
 
 
+def _dump(ms, out: Path) -> int:
+    """Raw answers of the endpoints LoxBridge parses, to turn into test fixtures."""
+    from .backup.runner import ms_client
+
+    out.mkdir(parents=True, exist_ok=True)
+    rc = 0
+    with ms_client(ms) as c:
+        for name, path in (("fslist_root.txt", "dev/fslist/"), ("fslist_prog.txt", "dev/fslist/prog/"),
+                           ("fslist_stats.txt", "dev/fslist/stats/"), ("cfg_version.json", "jdev/cfg/version"),
+                           ("cfg_api.json", "jdev/cfg/api")):
+            try:
+                (out / name).write_bytes(c.get(path))
+                print(f"{ms.id}: saved {out / name}")
+            except Exception as e:  # noqa: BLE001
+                print(f"{ms.id}: ERR {path}: {e}")
+                rc = 1
+        stats = [e for e in c.fslist("stats") if not e.is_dir][:1] if (out / "fslist_stats.txt").exists() else []
+        for e in stats:  # one statistics file, to check the binary format
+            c.fsget(f"stats/{e.name}", out / e.name)
+            print(f"{ms.id}: saved {out / e.name}")
+    return rc
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="loxbridge")
     sub = ap.add_subparsers(dest="cmd")
@@ -51,7 +74,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--deep", action="store_true", help="re-hash every file")
     p = sub.add_parser("gc", help="delete unreferenced S3 blobs")
     p.add_argument("--dest")
-    sub.add_parser("check", help="test Miniserver and destination connections")
+    p = sub.add_parser("check", help="test Miniserver and destination connections")
+    p.add_argument("--dump", type=Path, help="save raw Miniserver answers here (for test fixtures)")
     p = sub.add_parser("reset-admin", help="set the admin user and password")
     p.add_argument("--user", default="admin")
     p.add_argument("--password")
@@ -135,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
             for ok, msg in _test_miniserver(ms):
                 print(f"{ms.id}: {'ok ' if ok else 'ERR'} {msg}")
                 rc |= not ok
+            if a.dump:
+                rc |= _dump(ms, a.dump / ms.id)
         for d in cfg.destinations:
             try:
                 print(f"{d.id}: ok  {make_store(d, _work()).test()}")

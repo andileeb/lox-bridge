@@ -101,3 +101,20 @@ def test_s3_down_local_ok(mock_ms, tmp_path):
     r = runner.run_backup(c, "ms1", tmp_path / "work")
     assert r["destinations"]["local"]["ok"] and not r["destinations"]["s3"]["ok"]
     assert r["status"] == "partial"
+
+
+def test_two_s3_targets_nas_and_cloud(mock_ms, tmp_path, bucket):
+    url, _ = mock_ms
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket="cloud")
+    c = Config(miniservers=[Miniserver(id="ms1", name="MS", url=url, backup_user="admin", backup_password="secret")],
+               destinations=[S3Destination(id="nas", bucket="backups", access_key="a", secret_key="b", keep=3),
+                             S3Destination(id="cloud", bucket="cloud", access_key="a", secret_key="b", mode="archive",
+                                           keep=1)])
+    work = tmp_path / "work"
+    r1 = run_backup(c, "ms1", work)
+    r2 = run_backup(c, "ms1", work)
+    assert r1["destinations"]["nas"]["new_blobs"] > 0 and r2["destinations"]["nas"]["new_blobs"] == 0
+    assert r2["destinations"]["cloud"]["ok"]
+    nas, cloud = (make_store(d, work) for d in c.destinations)
+    assert len(nas.names("ms1")) == 2 and len(cloud.names("ms1")) == 1
+    assert (work / "s3index" / "nas_ms1.txt").exists() and not (work / "s3index" / "cloud_ms1.txt").exists()

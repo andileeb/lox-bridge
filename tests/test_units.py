@@ -58,7 +58,7 @@ def test_schedule():
 def test_settings_validation_and_secrets(tmp_path, monkeypatch):
     monkeypatch.delenv("SECRET_KEY", raising=False)
     with pytest.raises(ValidationError):
-        Config.model_validate({"miniservers": [{"id": "Bad Id", "name": "x", "url": "http://a"}]})
+        Config.model_validate({"miniservers": [{"id": "Bad Id", "name": "x", "url": "https://a"}]})
     with pytest.raises(ValidationError):
         Config.model_validate({"miniservers": [{"id": "a", "name": "x", "url": "ftp://a"}]})
     with pytest.raises(ValidationError, match="duplicate"):
@@ -66,7 +66,7 @@ def test_settings_validation_and_secrets(tmp_path, monkeypatch):
 
     s = Store(tmp_path)
     assert s.generated_key and oct((tmp_path / "secret.key").stat().st_mode)[-3:] == "600"
-    cfg = Config.model_validate({"miniservers": [{"id": "ms", "name": "x", "url": "http://a",
+    cfg = Config.model_validate({"miniservers": [{"id": "ms", "name": "x", "url": "https://a",
                                                   "backup_password": "pw1"}]})
     s.save(cfg)
     raw = (tmp_path / "loxbridge.db").read_bytes()
@@ -186,3 +186,9 @@ def test_cron_weekdays_like_standard_cron():
     assert c.get_next_fire_time(None, now).weekday() == 6  # Sunday
     [c] = cron_triggers("0 3 * * */2", "UTC")
     assert c.get_next_fire_time(None, now)
+
+
+def test_gen2_https_only():
+    with pytest.raises(ValidationError):
+        Config.model_validate({"miniservers": [{"id": "a", "name": "x", "url": "http://192.168.1.77"}]})
+    Config.model_validate({"miniservers": [{"id": "a", "name": "x", "url": "https://192.168.1.77:443"}]})

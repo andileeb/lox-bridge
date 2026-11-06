@@ -49,7 +49,7 @@ def test_ui_flow(tmp_path):
         page.goto(f"{BASE}/miniservers/new")
         page.fill("input[name=id]", "home")
         page.fill("input[name=name]", "Home")
-        page.fill("input[name=url]", "http://mock-ms")
+        page.fill("input[name=url]", "https://mock-ms")
         page.fill("input[name=backup_user]", "admin")
         page.fill("input[name=backup_password]", "secret")
         page.check("input[name=bridge_enabled]")

@@ -54,7 +54,7 @@ def test_wrong_password_leaves_nothing(mock_ms, tmp_path):
 
 def test_offline(tmp_path):
     with pytest.raises(MiniserverError, match="connection"):
-        c = cfg("http://127.0.0.1:1", tmp_path)
+        c = cfg("https://127.0.0.1:1", tmp_path)
         run_backup(c, "ms1", tmp_path / "work")
 
 
@@ -81,3 +81,38 @@ def test_token_auth_is_default_and_basic_fallback(mock_ms, tmp_path):
         run_backup(cfg(url, tmp_path, auth_mode="basic"), "ms1", tmp_path / "work")
     state.basic_allowed = True
     assert run_backup(cfg(url, tmp_path, auth_mode="basic"), "ms1", tmp_path / "work")["files"] > 3
+
+
+def test_redirect_is_explained(tmp_path):
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from loxbridge.miniserver.http import MiniserverHTTP
+
+    class R(BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802
+            self.send_response(302)
+            self.send_header("Location", "https://elsewhere.example/")
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), R)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    with MiniserverHTTP(f"http://127.0.0.1:{srv.server_port}", "u", "p", auth_mode="basic") as c:
+        with pytest.raises(MiniserverError, match="LAN address"):
+            c.fslist("/")
+    srv.shutdown()
+
+
+def test_check_dump(mock_ms, tmp_path, monkeypatch):
+    from loxbridge import cli
+
+    url, _ = mock_ms
+    monkeypatch.setattr(cli, "_store", lambda: type("S", (), {"config": cfg(url, tmp_path)})())
+    monkeypatch.setenv("WORK_DIR", str(tmp_path / "work"))
+    rc = cli.main(["check", "--dump", str(tmp_path / "diag")])
+    files = sorted(p.name for p in (tmp_path / "diag" / "ms1").iterdir())
+    assert "fslist_root.txt" in files and any(f.startswith("30000000-") for f in files)
+    assert rc in (0, 1)  # jdev/cfg/api isn't implemented by the mock

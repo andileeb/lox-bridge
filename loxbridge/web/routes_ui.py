@@ -274,8 +274,9 @@ def destination_edit(request: Request, dest_id: str, type: str = "s3", preset: s
     if i >= 0:
         d = s.cfg.destinations[i]
     elif dest_id == "new" and type in DEST_TYPES:
-        n = len(s.cfg.destinations) + 1
-        d = DEST_TYPES[type](id=f"{type}{n}", **S3_PRESETS.get(preset, {}))  # type: ignore[arg-type]
+        taken = {x.id for x in s.cfg.destinations}
+        new_id = next(f"{preset or type}{n}" for n in range(1, 100) if f"{preset or type}{n}" not in taken)
+        d = DEST_TYPES[type](id=new_id, **S3_PRESETS.get(preset, {}))  # type: ignore[arg-type]
     else:
         raise HTTPException(404)
     return _page(request, "edit.html", title=f"Destination: {d.name}" if i >= 0 else f"Add {type} destination",

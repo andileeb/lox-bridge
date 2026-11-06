@@ -19,7 +19,8 @@ def empty_secret() -> SecretStr:
 class Miniserver(BaseModel):
     id: Slug
     name: str
-    url: str = Field(pattern=r"^https?://[^/\s]+/?$")
+    url: str = Field(pattern=r"^https://[^/\s]+/?$",
+                     description="Gen 2 only: https://<ip or CloudDNS name>[:port]")
     verify_tls: bool = Field(False, description=(
         "Gen 2 certificates are only valid for the CloudDNS name "
         "(https://<ip-with-dashes>.<serial>.dyndns.loxonecloud.com); leave off when using the IP."))

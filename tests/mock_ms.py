@@ -1,5 +1,5 @@
-"""Fake Miniserver: HTTP (/dev/fslist, /dev/fsget, jdev) and WebSocket (token auth, structure,
-binary value events) on one port. Basic auth admin:secret; HTTP 500 on log/broken.log.
+"""Fake Gen 2 Miniserver over TLS (self-signed): HTTPS (/dev/fslist, /dev/fsget, jdev) and WebSocket
+(token auth, structure, binary value events) on one port. Basic auth admin:secret; HTTP 500 on log/broken.log.
 
   python tests/mock_ms.py --port 8081 [--extra-controls 50] [--interval 1.0]
 """
@@ -7,12 +7,15 @@ binary value events) on one port. Basic auth admin:secret; HTTP 500 on log/broke
 import argparse
 import asyncio
 import base64
+import datetime
 import hashlib
 import hmac
 import json
 import random
 import secrets
+import ssl
 import struct
+import tempfile
 import time
 import urllib.parse
 from dataclasses import dataclass, field
@@ -20,8 +23,10 @@ from http import HTTPStatus
 from pathlib import Path
 
 import websockets
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
+from cryptography.x509.oid import NameOID
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.datastructures import Headers
 from websockets.http11 import Request, Response
@@ -240,9 +245,26 @@ def make_handlers(state: MockState):
     return process_request, handler
 
 
+def self_signed_tls() -> ssl.SSLContext:
+    """Like a Gen 2 Miniserver reached by IP: HTTPS with a certificate that doesn't verify."""
+    key = ec.generate_private_key(ec.SECP256R1())
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "mock.dyndns.loxonecloud.com")])
+    now = datetime.datetime.now(datetime.UTC)
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now)
+            .not_valid_after(now + datetime.timedelta(days=365)).sign(key, hashes.SHA256()))
+    d = Path(tempfile.mkdtemp())
+    (d / "c.pem").write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    (d / "k.pem").write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                                serialization.NoEncryption()))
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(d / "c.pem", d / "k.pem")
+    return ctx
+
+
 async def start(state: MockState, host: str = "127.0.0.1", port: int = 0):
     process_request, handler = make_handlers(state)
-    server = await serve(handler, host, port, process_request=process_request,
+    server = await serve(handler, host, port, process_request=process_request, ssl=self_signed_tls(),
                          subprotocols=["remotecontrol"])  # type: ignore[list-item]
     return server, server.sockets[0].getsockname()[1]
 
@@ -259,7 +281,7 @@ def main() -> None:
 
     async def run() -> None:
         _, port = await start(state, a.host, a.port)
-        print(f"mock Miniserver on {a.host}:{port} ({USER}:{PASSWORD})", flush=True)
+        print(f"mock Miniserver on https://{a.host}:{port} ({USER}:{PASSWORD})", flush=True)
         await asyncio.Future()
 
     asyncio.run(run())

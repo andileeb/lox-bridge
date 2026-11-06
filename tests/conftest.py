@@ -23,7 +23,7 @@ def mock_ms():
 
     threading.Thread(target=lambda: (loop.run_until_complete(boot()), loop.run_forever()), daemon=True).start()
     ready.wait(5)
-    yield f"http://127.0.0.1:{box['port']}", state
+    yield f"https://127.0.0.1:{box['port']}", state
 
     async def stop():
         box["server"].close()

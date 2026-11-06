@@ -7,11 +7,11 @@ WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./
 COPY loxbridge ./loxbridge
 RUN pip install --no-cache-dir . \
- && groupadd -g 568 apps && useradd -u 568 -g 568 -M -d /config -s /usr/sbin/nologin apps \
- && mkdir -p /config /backups /work && chown 568:568 /config /backups /work
+ && groupadd -g 568 apps && useradd -u 568 -g 568 -M -d /config -s /usr/sbin/nologin apps
 
-# 568 = TrueNAS "apps" user
-USER 568:568
+# Starts as root only to create /config, /work, /backups and hand them to PUID:PGID (default 568 = TrueNAS
+# "apps"), then drops to that user before anything else runs (loxbridge/cli.py drop_privileges).
+ENV PUID=568 PGID=568
 VOLUME ["/config", "/backups", "/work"]
 EXPOSE 8080
 HEALTHCHECK --interval=60s --timeout=10s --start-period=20s \

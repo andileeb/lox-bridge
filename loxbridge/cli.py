@@ -10,6 +10,25 @@ from pathlib import Path
 from . import logs
 
 
+def drop_privileges(dirs: list[Path]) -> None:
+    """Started as root (the image default): create the data folders, hand them to PUID:PGID (568 = TrueNAS apps)
+    and continue as that user. Also covers `docker exec` commands, so they never leave root-owned files behind."""
+    if os.getuid() != 0:
+        return
+    uid, gid = int(os.environ.get("PUID", "568")), int(os.environ.get("PGID", "568"))
+    for d in dirs:
+        d.mkdir(parents=True, exist_ok=True)
+        st = d.stat()
+        if (st.st_uid, st.st_gid) != (uid, gid):
+            # ponytail: recursive only when the top folder is wrong (first start / data copied in as root)
+            for root, subdirs, files in os.walk(d):
+                for name in [root, *(os.path.join(root, x) for x in subdirs + files)]:
+                    os.lchown(name, uid, gid)
+    os.setgroups([])
+    os.setgid(gid)
+    os.setuid(uid)
+
+
 def _store():
     from .settings.store import Store
 
@@ -81,6 +100,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--password")
     a = ap.parse_args(argv)
     logs.setup(os.environ.get("LOG_LEVEL", "INFO"))
+    env = os.environ.get
+    drop_privileges([Path(env("CONFIG_DIR", "/config")), _work(), Path(env("BACKUP_DIR", "/backups"))])
 
     if a.cmd in (None, "serve"):
         import uvicorn

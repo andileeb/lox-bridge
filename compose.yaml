@@ -1,7 +1,10 @@
-# TrueNAS: Apps -> Discover Apps -> ⋮ -> Install via YAML. Adjust the dataset paths first.
+# TrueNAS: Apps -> Discover Apps -> ⋮ -> Install via YAML.
+# Only change "tank" to your pool name and set ADMIN_PASSWORD. The folders are created on first start and handed to
+# the "apps" user (568) automatically. Want the backups in their own dataset (own snapshot schedule / quota)? Create
+# it and put its path on the /backups line.
 services:
   loxbridge:
-    image: ghcr.io/andileeb/loxbridge:0.1.1
+    image: ghcr.io/andileeb/loxbridge:0.1.2
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -11,5 +14,5 @@ services:
       # SECRET_KEY: optional; otherwise /config/secret.key is generated (back it up!)
     volumes:
       - /mnt/tank/apps/loxbridge/config:/config
-      - /mnt/tank/backups/loxone:/backups
       - /mnt/tank/apps/loxbridge/work:/work
+      - /mnt/tank/apps/loxbridge/backups:/backups

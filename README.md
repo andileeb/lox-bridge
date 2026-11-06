@@ -13,15 +13,17 @@ to backfill Grafana with the time before the proxy ran.
 
 ## Install on TrueNAS
 
-1. Create datasets, e.g. `apps/loxbridge/config`, `apps/loxbridge/work` and `backups/loxone`. Give the `apps`
-   user (UID/GID 568) write access.
-2. Apps → Discover Apps → ⋮ → **Install via YAML**, paste [`compose.yaml`](compose.yaml), adjust paths, `TZ` and
-   `ADMIN_PASSWORD`.
+1. Apps → Discover Apps → ⋮ → **Install via YAML**, paste [`compose.yaml`](compose.yaml), replace `tank` with your
+   pool name, set `TZ` and `ADMIN_PASSWORD`. No datasets or permissions to prepare: the container creates
+   `config`, `work` and `backups` under `/mnt/<pool>/apps/loxbridge/` on first start and hands them to the `apps`
+   user (568, override with `PUID`/`PGID`), then runs as that user.
+2. Optional: want the backups in their own dataset (own snapshot schedule or quota)? Create it, e.g.
+   `tank/backups/loxone`, and put its path on the `/backups` line. Permissions are fixed automatically.
 3. Open `http://<truenas>:8080`, log in as `admin` with that password. Remove `ADMIN_PASSWORD` afterwards
    (it's only used on the first start). Lost the password? `docker exec -it <container> python -m loxbridge reset-admin`.
 4. **Back up `/config/secret.key`** (or set `SECRET_KEY`). Without it the stored passwords can't be decrypted.
 
-Recommended: a periodic ZFS snapshot task on the backup dataset. Local snapshots are hard-linked, so ZFS snapshots
+Recommended: a periodic ZFS snapshot task on the dataset that holds the backups. Local snapshots are hard-linked, so ZFS snapshots
 of them cost almost nothing, and they protect against deletion by the app itself.
 
 | Env var | Purpose |

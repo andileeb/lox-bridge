@@ -110,7 +110,10 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
   Bearer-token API calls are exempt.
 - Locked (env-overridden) form fields are disabled → not submitted → pass their names in `skip` to `forms.parse`,
   or booleans would read as false.
-- Container runs as UID/GID 568 (TrueNAS apps). `Dockerfile` copies README.md + LICENSE (pyproject metadata needs
+- The image starts as root only for `cli.drop_privileges()`: it creates `/config`, `/work`, `/backups`, chowns them to
+  `PUID:PGID` (568 = TrueNAS apps) and drops to that user before anything else, for every command (so
+  `docker exec … loxbridge once` doesn't leave root-owned files). Docker Desktop on macOS shows bind-mounted files
+  as root regardless; test ownership on a named volume. `Dockerfile` copies README.md + LICENSE (pyproject metadata needs
   them).
 - `astral-sh/setup-uv` has no moving major tag: pin the full version in workflows.
 - MinIO images are no longer published; the dev stack uses `adobe/s3mock` (internal only, no host port).

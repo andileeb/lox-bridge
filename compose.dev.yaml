@@ -13,7 +13,6 @@ services:
       - ./dev-data/config:/config
       - ./dev-data/backups:/backups
       - ./dev-data/work:/work
-    user: "0:0"   # bind mounts in dev are owned by your user, not 568
     depends_on: [mock-ms, s3, mosquitto, influxdb]
 
   mock-ms:

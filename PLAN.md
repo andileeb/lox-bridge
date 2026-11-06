@@ -67,6 +67,14 @@ Basic auth).
 5. The statistics file format and location (blocking only for the history import). Unknown files are skipped.
 6. A test restore through Loxone Config, adjusting the snapshot folder naming if Config expects a `_<version>` suffix.
 
+## Next: official TrueNAS community app
+
+Goal: install from Apps → Discover like other apps (form, ixVolume or host path per storage, permissions handled by
+TrueNAS) via a pull request to [truenas/apps](https://github.com/truenas/apps) (`ix-dev/community/loxbridge`:
+`app.yaml`, `questions.yaml`, `templates/docker-compose.yaml`, `README.md`, icon/screenshots). Do it after the
+real-Miniserver validation above has passed. Until then: Install via YAML with `compose.yaml` (folders and permissions
+are created by the container itself since v0.1.2).
+
 ## Later
 
 Write bridge (MQTT → Miniserver with an allow-list), client-side encryption of S3 blobs, multi-user roles, high-availability bridge,

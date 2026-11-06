@@ -19,7 +19,7 @@ to backfill Grafana with the time before the proxy ran.
    user (568, override with `PUID`/`PGID`), then runs as that user.
 2. Optional: want the backups in their own dataset (own snapshot schedule or quota)? Create it, e.g.
    `tank/backups/loxone`, and put its path on the `/backups` line. Permissions are fixed automatically.
-3. Open `http://<truenas>:8080`, log in as `admin` with that password. Remove `ADMIN_PASSWORD` afterwards
+3. Open `http://<truenas>:18568` (or the **Web UI** button in the apps list), log in as `admin` with that password. Remove `ADMIN_PASSWORD` afterwards
    (it's only used on the first start). Lost the password? `docker exec -it <container> python -m loxbridge reset-admin`.
 4. **Back up `/config/secret.key`** (or set `SECRET_KEY`). Without it the stored passwords can't be decrypted.
 

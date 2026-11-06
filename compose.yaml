@@ -7,7 +7,7 @@ services:
     image: ghcr.io/andileeb/loxbridge:0.1.2
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "18568:8080"   # NAS port : container port; change only the left side if 18568 is taken
     environment:
       TZ: Europe/Vienna
       ADMIN_PASSWORD: change-me-on-first-start   # only used on the first start; remove afterwards
@@ -22,5 +22,5 @@ x-portals:
   - name: Web UI
     scheme: http
     host: 0.0.0.0
-    port: 8080
+    port: 18568
     path: /

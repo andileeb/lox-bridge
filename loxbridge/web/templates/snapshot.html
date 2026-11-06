@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ snap }}</h2>
+<p>{{ m.created }} · {{ m.files|length }} files · destination <b>{{ dest }}</b></p>
+<div class="actions">
+  <a role="button" href="{{ base }}/api/v1/snapshots/{{ dest }}/{{ ms }}/{{ snap }}/download">Download ZIP</a>
+  <form method="post" action="{{ base }}/snapshots/{{ dest }}/{{ ms }}/{{ snap }}/verify"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <label style="display:inline"><input type="checkbox" name="deep"> deep (re-hash)</label> <button class="secondary">Verify</button></form>
+  <form method="post" action="{{ base }}/snapshots/{{ dest }}/{{ ms }}/{{ snap }}/delete" onsubmit="return confirm('Delete this snapshot?')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline contrast">Delete</button></form>
+</div>
+<details><summary>Restore to folder</summary>
+<form method="post" action="{{ base }}/snapshots/{{ dest }}/{{ ms }}/{{ snap }}/restore" class="grid">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="target" placeholder="/backups/restore/{{ snap }}" value="/backups/restore/{{ snap }}" required>
+  <button>Restore</button>
+</form>
+<small>Writes the files into an empty folder inside the container (e.g. under <code>/backups</code>). Copy it to the SD card or load the project with Loxone Config.</small>
+</details>
+<details {% if diff %}open{% endif %}><summary>Compare with another snapshot</summary>
+<form method="get" class="grid"><select name="compare">{% for o in others %}<option {% if o == compare %}selected{% endif %}>{{ o }}</option>{% endfor %}</select><button>Diff</button></form>
+{% if diff %}<p>Changes from <b>{{ compare }}</b> to <b>{{ snap }}</b>:</p>
+{% for k in ["added", "removed", "changed"] %}<p><b>{{ k }}</b> ({{ diff[k]|length }})</p><ul>{% for p in diff[k][:300] %}<li><code>{{ p }}</code></li>{% endfor %}</ul>{% endfor %}{% endif %}
+</details>
+{% if m.errors %}<h3 class="warn">Errors</h3><ul>{% for e in m.errors %}<li><code>{{ e.path }}</code>: {{ e.error }}</li>{% endfor %}</ul>{% endif %}
+<h3>Files</h3>
+<div class="scroll"><table><tr><th>Path</th><th class="num">Size</th><th>Date</th></tr>
+{% for p, f in m.files|dictsort %}<tr><td><a href="{{ base }}/api/v1/snapshots/{{ dest }}/{{ ms }}/{{ snap }}/download?path={{ p|urlencode }}">{{ p }}</a></td><td class="num">{{ f.size|size }}</td><td>{{ f.stamp }}</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

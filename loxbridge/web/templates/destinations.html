@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Destinations</h2>
+<table><tr><th>Name</th><th>Type</th><th>Where</th><th>Keep</th><th>Enabled</th><th></th></tr>
+{% for d in items %}<tr><td>{{ d.name }}</td><td>{{ d.type }}{% if d.type == "s3" %} ({{ d.mode }}){% endif %}</td>
+<td>{% if d.type == "local" %}{{ d.path }}{% else %}{{ d.endpoint or "AWS" }} / {{ d.bucket }}/{{ d.prefix }}{% endif %}</td>
+<td>{{ d.keep }}</td><td>{{ "yes" if d.enabled else "no" }}</td>
+<td class="actions"><a href="{{ base }}/destinations/{{ d.id }}">Edit</a>
+ <button class="outline secondary" hx-post="{{ base }}/destinations/{{ d.id }}/test" hx-target="#r-{{ d.id }}">Test</button>
+ {% if d.type == "s3" %}<form method="post" action="{{ base }}/destinations/{{ d.id }}/gc"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline secondary">GC</button></form>{% endif %}
+ <span id="r-{{ d.id }}"></span></td></tr>{% endfor %}
+</table>
+<div class="actions">
+  {% if not items|selectattr("type", "equalto", "local")|list %}<a role="button" href="{{ base }}/destinations/new?type=local">Add local</a>{% endif %}
+  <details class="dropdown"><summary role="button">Add S3</summary><ul>
+  {% for p in presets %}<li><a href="{{ base }}/destinations/new?type=s3&preset={{ p }}">{{ {"aws": "AWS S3", "b2": "Backblaze B2", "wasabi": "Wasabi", "hetzner": "Hetzner", "r2": "Cloudflare R2", "minio": "MinIO"}[p] }}</a></li>{% endfor %}
+  <li><a href="{{ base }}/destinations/new?type=s3">Other S3-compatible</a></li></ul></details>
+</div>
+<p><small>S3 <b>dedup</b> mode stores each file content once (content addressed) and keeps the newest N manifests; unreferenced blobs older than 24 h are removed by GC (nightly at 04:45). <b>archive</b> mode uploads one tar.gz per snapshot.</small></p>
+{% endblock %}

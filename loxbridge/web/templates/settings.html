@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block content %}
+<h2>Settings</h2>
+<article><header><strong>Admin password</strong></header>
+<form method="post" action="{{ base }}/settings/password"><input type="hidden" name="csrf" value="{{ csrf }}">
+<div class="grid"><input type="password" name="current" placeholder="Current password" autocomplete="current-password" required>
+<input type="password" name="new" placeholder="New password (8+ characters)" autocomplete="new-password" required>
+<input type="password" name="repeat" placeholder="Repeat" autocomplete="new-password" required></div>
+<button>Change password</button></form></article>
+
+<article><header><strong>API tokens</strong></header>
+<p><small>Send as <code>Authorization: Bearer &lt;token&gt;</code> to <code>/api/v1/…</code> (Grafana Infinity, scripts). API docs: <a href="{{ base }}/api/docs">/api/docs</a>.</small></p>
+{% if new_token %}<p class="flash">New token (shown once): <code>{{ new_token }}</code></p>{% endif %}
+<table><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr>
+{% for t in tokens %}<tr><td>{{ t.name }}</td><td>{{ t.created|time }}</td><td>{{ t.last_used|time }}</td>
+<td><form method="post" action="{{ base }}/settings/tokens/{{ t.id }}/delete" style="margin:0"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline contrast" style="padding:.1rem .5rem">Delete</button></form></td></tr>{% endfor %}
+</table>
+<form method="post" action="{{ base }}/settings/tokens" class="grid"><input type="hidden" name="csrf" value="{{ csrf }}"><input name="name" placeholder="Token name, e.g. grafana"><button>Create token</button></form>
+</article>
+
+<article><header><strong>Security</strong></header>
+<form method="post" action="{{ base }}/settings/security"><input type="hidden" name="csrf" value="{{ csrf }}">
+{% for f in fields %}{{ field(f) }}{% endfor %}
+<small>Proxy header auth trusts the header only from the listed proxy IPs/networks (e.g. <code>172.16.0.0/12</code>). The metrics token, if set, is required as a Bearer token on <code>/metrics</code>.</small>
+<button>Save</button></form></article>
+
+<article><header><strong>Configuration export / import</strong></header>
+<div class="actions"><a role="button" class="outline" href="{{ base }}/settings/export">Export (no secrets)</a>
+<a role="button" class="outline secondary" href="{{ base }}/settings/export?secrets=1">Export with encrypted secrets</a></div>
+<p><small>Encrypted secrets can only be imported with the same SECRET_KEY. Every backup also stores the configuration (without secrets) as <code>_loxbridge/config.json</code>.</small></p>
+<form method="post" action="{{ base }}/settings/import" enctype="multipart/form-data"><input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="file" name="file" accept="application/json" required><button class="secondary">Import</button></form>
+<small>Import replaces the configuration. Secrets missing from the file keep their stored values.</small>
+</article>
+
+<article><header><strong>About</strong></header>
+<p>LoxBridge {{ version }} · time zone {{ tz }} · config <code>{{ config_dir }}</code> · work <code>{{ work }}</code></p></article>
+{% endblock %}

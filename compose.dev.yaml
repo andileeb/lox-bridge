@@ -1,0 +1,61 @@
+# Dev / E2E stack: app + mock Miniserver + S3 (s3mock) + Mosquitto + InfluxDB + Prometheus + Grafana
+#   docker compose -f compose.dev.yaml up --build
+# UI: http://localhost:8080 (admin / devpassword1), Grafana: http://localhost:3000 (admin / admin)
+services:
+  loxbridge:
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      TZ: Europe/Vienna
+      ADMIN_PASSWORD: devpassword1
+      SECRET_KEY: dev-only-secret
+    volumes:
+      - ./dev-data/config:/config
+      - ./dev-data/backups:/backups
+      - ./dev-data/work:/work
+    user: "0:0"   # bind mounts in dev are owned by your user, not 568
+    depends_on: [mock-ms, s3, mosquitto, influxdb]
+
+  mock-ms:
+    build: .
+    entrypoint: ["python", "/tests/mock_ms.py", "--port", "80", "--extra-controls", "50"]
+    volumes: ["./tests:/tests:ro"]
+    ports: ["8081:80"]
+    healthcheck: {disable: true}
+
+  s3:
+    # any S3-compatible server works; MinIO images are no longer published
+    image: adobe/s3mock:latest
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: loxbridge
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    command: mosquitto -c /mosquitto-no-auth.conf
+    ports: ["1883:1883"]
+
+  influxdb:
+    image: influxdb:2.7
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: adminpassword
+      DOCKER_INFLUXDB_INIT_ORG: home
+      DOCKER_INFLUXDB_INIT_BUCKET: loxone
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: dev-influx-token
+    ports: ["8086:8086"]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      INFLUX_TOKEN: dev-influx-token
+      PROMETHEUS_URL: http://prometheus:9090
+    volumes:
+      - ./examples/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./examples/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes: ["./examples/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]

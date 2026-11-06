@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import field %}
+{% block content %}
+<h2>{{ title }}</h2>
+{% if note %}<p><small>{{ note }}</small></p>{% endif %}
+<form method="post" action="{{ base }}{{ action }}">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
+  {% for f in fields %}<div>{{ field(f) }}</div>{% endfor %}
+  </div>
+  <div class="actions">
+    <button type="submit">Save</button>
+    {% if back %}<a href="{{ base }}{{ back }}" role="button" class="secondary outline">Back</a>{% endif %}
+    {% if test_url %}<button type="button" class="secondary" hx-post="{{ base }}{{ test_url }}" hx-target="#test-result" hx-indicator="#test-busy">Test</button>
+    <span id="test-busy" class="htmx-indicator" aria-busy="true"></span>{% endif %}
+  </div>
+</form>
+<div id="test-result"></div>
+{% if test_url %}<p><small>Test uses the saved settings: save first.</small></p>{% endif %}
+{% if delete_url %}
+<form method="post" action="{{ base }}{{ delete_url }}" onsubmit="return confirm('Delete?')">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline contrast">Delete</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,288 @@
+{
+ "uid": "loxbridge-health",
+ "title": "LoxBridge health",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "refresh": "30s",
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "tags": [
+  "loxone",
+  "loxbridge"
+ ],
+ "timezone": "browser",
+ "templating": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "stat",
+   "title": "Backup age",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 6
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "time() - loxbridge_backup_last_success_timestamp"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 100000
+       },
+       {
+        "color": "red",
+        "value": 200000
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {},
+   "id": 1
+  },
+  {
+   "type": "stat",
+   "title": "Last backup ok",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 0,
+    "w": 8,
+    "h": 6
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "loxbridge_backup_last_ok"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {},
+   "id": 2
+  },
+  {
+   "type": "stat",
+   "title": "Bridge connected",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 0,
+    "w": 8,
+    "h": 6
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "loxbridge_ws_connected"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {},
+   "id": 3
+  },
+  {
+   "type": "timeseries",
+   "title": "Backup duration",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 6,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "loxbridge_backup_duration_seconds"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "options": {},
+   "id": 4
+  },
+  {
+   "type": "timeseries",
+   "title": "Snapshot size",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 6,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "loxbridge_backup_bytes"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes"
+    },
+    "overrides": []
+   },
+   "options": {},
+   "id": 5
+  },
+  {
+   "type": "timeseries",
+   "title": "Sink points/s",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "rate(loxbridge_sink_sent_total[5m])"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {},
+   "id": 6
+  },
+  {
+   "type": "timeseries",
+   "title": "Sink drops/s",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 14,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "rate(loxbridge_sink_dropped_total[5m])"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {},
+   "id": 7
+  },
+  {
+   "type": "timeseries",
+   "title": "Sink queue",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "loxbridge-prometheus"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 14,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "loxbridge-prometheus"
+     },
+     "expr": "loxbridge_sink_queue"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {},
+   "id": 8
+  }
+ ],
+ "annotations": {
+  "list": []
+ }
+}

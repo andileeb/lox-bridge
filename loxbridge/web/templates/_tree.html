@@ -1,0 +1,10 @@
+<ul class="tree">
+{% for e in entries %}
+  {% set p = (path ~ "/" ~ e.name) if path else e.name %}
+  <li>{% if e.is_dir %}
+    <details><summary>📁 {{ e.name }}<button type="button" class="outline" onclick="addExclude('{{ p }}/*')">exclude</button></summary>
+      <div hx-get="{{ base }}/backup/tree?ms={{ ms }}&path={{ p|urlencode }}" hx-trigger="toggle from:closest details once"></div>
+    </details>
+  {% else %}📄 {{ e.name }} <small>{{ e.size|size }}</small><button type="button" class="outline" onclick="addExclude('{{ p }}')">exclude</button>{% endif %}</li>
+{% else %}<li><small>empty</small></li>{% endfor %}
+</ul>

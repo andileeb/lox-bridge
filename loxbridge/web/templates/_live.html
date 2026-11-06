@@ -1,0 +1,6 @@
+<div class="scroll"><table><tr><th>Control</th><th>State</th><th>Room</th><th>Value</th><th>Changed</th></tr>
+{% for r in rows %}<tr><td>{{ r.control }}</td><td>{{ r.state }}</td><td>{{ r.room }}</td>
+<td>{{ r.value if r.value is not none else r.text }}{% if r.unit and r.value is not none %} {{ r.unit }}{% endif %}</td>
+<td><small>{{ (now - r.ts)|round|int }} s ago</small></td></tr>
+{% else %}<tr><td colspan="5">No values yet.</td></tr>{% endfor %}
+</table></div>

@@ -1,0 +1,17 @@
+:root { --pico-font-size: 95%; }
+nav.top { padding: 0 1rem; border-bottom: 1px solid var(--pico-muted-border-color); flex-wrap: wrap; }
+nav.top ul { flex-wrap: wrap; }
+nav.top a.active { font-weight: bold; text-decoration: underline; }
+main.container { padding-top: 1rem; }
+.ok { color: #2e9e4f; } .error, .failed { color: #d33; } .partial, .warn { color: #c80; }
+.badge { padding: .1rem .45rem; border-radius: .4rem; font-size: .8em; border: 1px solid currentColor; }
+.flash { padding: .6rem 1rem; border-radius: .4rem; background: var(--pico-card-background-color);
+         border-left: 4px solid #2e9e4f; margin-bottom: 1rem; }
+.flash.err { border-left-color: #d33; }
+pre.log { max-height: 60vh; overflow: auto; font-size: .8em; white-space: pre-wrap; }
+table { font-size: .9em; } td.num { text-align: right; }
+.actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+.actions form { margin: 0; } .actions button, .actions a[role=button] { margin: 0; padding: .3rem .8rem; }
+.scroll { overflow-x: auto; }
+.locked { opacity: .7; } small.lock { color: #c80; }
+.tree li { list-style: none; } .tree button { padding: .1rem .5rem; font-size: .8em; margin: 0 .3rem; }

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Bridge</h2>
+<p><small>Read-only: LoxBridge never sends commands to the Miniserver. Enable the bridge and set a bridge user per Miniserver on the <a href="{{ base }}/miniservers">Miniservers</a> page.</small></p>
+<article><header><strong>Outputs</strong></header>
+<table><tr><th>Name</th><th>Type</th><th>Exports</th><th>Status</th><th></th></tr>
+{% set st = {} %}{% for x in sink_status %}{% set _ = st.update({x.id: x}) %}{% endfor %}
+{% for s in sinks %}<tr><td>{% if current and s.id == current.id %}<b>{{ s.name or s.id }}</b>{% else %}<a href="?sink={{ s.id }}&ms={{ ms }}">{{ s.name or s.id }}</a>{% endif %}</td>
+<td>{{ s.type }}</td><td>{{ s.selection|length }} controls</td>
+<td>{% if not s.enabled %}off{% elif st[s.id] and st[s.id].error %}<span class="error">{{ st[s.id].error }}</span>{% elif st[s.id] %}queue {{ st[s.id].queue }}{% endif %}</td>
+<td><a href="{{ base }}/sinks/{{ s.id }}">Settings</a></td></tr>{% endfor %}
+</table>
+<div class="actions">{% for t, label in [("influx", "InfluxDB / VictoriaMetrics"), ("prometheus", "Prometheus"), ("mqtt", "MQTT"), ("webhook", "Webhook")] %}
+<a role="button" class="outline" href="{{ base }}/sinks/new?type={{ t }}">+ {{ label }}</a>{% endfor %}</div>
+</article>
+
+{% if structures %}
+<form method="get" class="grid">
+  <input type="hidden" name="sink" value="{{ current.id if current else '' }}">
+  <select name="ms" onchange="this.form.submit()">{% for m in structures %}<option value="{{ m }}" {% if m == ms %}selected{% endif %}>{{ names.get(m, m) }}{% if status.get(m) %} ({{ "connected" if status[m].connected else "offline" }}){% endif %}</option>{% endfor %}</select>
+</form>
+{% endif %}
+
+{% if current and controls %}
+<h3>Controls exported to “{{ current.name or current.id }}”</h3>
+<div class="grid">
+  <select id="f-room"><option value="">any room</option>{% for r in controls|map(attribute="room")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
+  <select id="f-cat"><option value="">any category</option>{% for r in controls|map(attribute="category")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
+  <select id="f-type"><option value="">any type</option>{% for r in controls|map(attribute="type")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
+  <div class="actions"><button type="button" class="outline" onclick="bulk(true)">Select matching</button><button type="button" class="outline secondary" onclick="bulk(false)">Clear matching</button></div>
+</div>
+<form method="post" action="{{ base }}/bridge/selection">
+<input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="sink" value="{{ current.id }}"><input type="hidden" name="ms" value="{{ ms }}">
+<div class="scroll"><table>
+<tr><th></th><th>Control</th><th>Room</th><th>Category</th><th>Type</th><th>Values</th></tr>
+{% for c in controls %}
+<tr class="ctl" data-room="{{ c.room }}" data-cat="{{ c.category }}" data-type="{{ c.type }}">
+<td><input type="checkbox" name="sel" value="{{ c.uuid }}" {% if c.uuid in selected %}checked{% endif %}></td>
+<td>{{ c.name }}</td><td>{{ c.room }}</td><td>{{ c.category }}</td><td>{{ c.type }}</td>
+<td><small>{% for sname, su in c.states.items() %}{% if su in values %}{{ sname }}={{ values[su].value if values[su].value is not none else values[su].text }}{% if c.unit and values[su].value is not none %} {{ c.unit }}{% endif %} {% endif %}{% endfor %}</small></td></tr>
+{% endfor %}
+</table></div>
+<button>Save selection</button>
+</form>
+{% elif not structures %}
+<p>No structure loaded yet. Once a Miniserver's bridge connects, its controls appear here.</p>
+{% elif not current %}<p>Add an output first.</p>{% endif %}
+
+<h3>Live values</h3>
+<div hx-get="{{ base }}/bridge/live?ms={{ ms }}" hx-trigger="load, every 2s"></div>
+<script>
+function bulk(on) {
+  const r = document.getElementById("f-room").value, c = document.getElementById("f-cat").value, t = document.getElementById("f-type").value;
+  document.querySelectorAll("tr.ctl").forEach(tr => {
+    if ((!r || tr.dataset.room === r) && (!c || tr.dataset.cat === c) && (!t || tr.dataset.type === t))
+      tr.querySelector("input").checked = on;
+  });
+}
+</script>
+{% endblock %}

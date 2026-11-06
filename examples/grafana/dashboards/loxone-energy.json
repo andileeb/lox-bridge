@@ -1,0 +1,124 @@
+{
+ "uid": "loxbridge-energy",
+ "title": "Loxone energy",
+ "schemaVersion": 39,
+ "version": 1,
+ "editable": true,
+ "refresh": "30s",
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "tags": [
+  "loxone",
+  "loxbridge"
+ ],
+ "timezone": "browser",
+ "templating": {
+  "list": []
+ },
+ "panels": [
+  {
+   "type": "timeseries",
+   "title": "Power (actual)",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "loxbridge-influx"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "loxbridge-influx"
+     },
+     "query": "from(bucket: \"loxone\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"loxone\" and r._field == \"value\" and r.type == \"Meter\" and r.state == \"actual\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> map(fn: (r) => ({r with _field: r.control}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatt"
+    },
+    "overrides": []
+   },
+   "options": {},
+   "id": 1
+  },
+  {
+   "type": "barchart",
+   "title": "Energy per day",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "loxbridge-influx"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 9,
+    "w": 16,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "loxbridge-influx"
+     },
+     "query": "from(bucket: \"loxone\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"loxone\" and r._field == \"value\" and r.type == \"Meter\" and r.state == \"total\")\n  |> aggregateWindow(every: 1d, fn: last, createEmpty: false)\n  |> difference(nonNegative: true)\n  |> map(fn: (r) => ({r with _field: r.control}))\n  |> keep(columns: [\"_time\", \"_value\", \"_field\"])"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth"
+    },
+    "overrides": []
+   },
+   "options": {
+    "xTickLabelSpacing": 100,
+    "stacking": "normal"
+   },
+   "id": 2
+  },
+  {
+   "type": "table",
+   "title": "Meter totals",
+   "datasource": {
+    "type": "influxdb",
+    "uid": "loxbridge-influx"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 9,
+    "w": 8,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "influxdb",
+      "uid": "loxbridge-influx"
+     },
+     "query": "from(bucket: \"loxone\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"loxone\" and r._field == \"value\" and r.type == \"Meter\" and r.state == \"total\")\n  |> last()\n  |> keep(columns: [\"control\", \"_value\"])\n  |> group()"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "kwatth"
+    },
+    "overrides": []
+   },
+   "options": {},
+   "id": 3
+  }
+ ],
+ "annotations": {
+  "list": []
+ }
+}

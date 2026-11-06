@@ -1,0 +1,27 @@
+{% macro field(f) -%}
+<label class="{% if f.locked %}locked{% endif %}">{{ f.label }}
+{% if f.kind == "bool" %}
+  <input type="checkbox" role="switch" name="{{ f.name }}" {% if f.value %}checked{% endif %} {% if f.locked %}disabled{% endif %}>
+{% elif f.kind == "select" %}
+  <select name="{{ f.name }}" {% if f.locked %}disabled{% endif %}>
+  {% for o in f.options %}<option value="{{ o }}" {% if o == f.value|string %}selected{% endif %}>{{ o or "(none)" }}</option>{% endfor %}
+  </select>
+{% elif f.kind == "secret" %}
+  <input type="password" name="{{ f.name }}" placeholder="{{ f.value or 'not set' }}" autocomplete="new-password" {% if f.locked %}disabled{% endif %}>
+  {% if f.value %}<small>Stored. Type a new value to replace it, or leave empty to keep it.</small>{% endif %}
+{% elif f.kind == "list" %}
+  <textarea name="{{ f.name }}" rows="3" {% if f.locked %}disabled{% endif %}>{{ f.value }}</textarea>
+  <small>One per line.</small>
+{% elif f.kind == "number" %}
+  <input type="number" step="{{ f.step }}" name="{{ f.name }}" value="{{ f.value }}" {% if f.locked %}disabled{% endif %}>
+{% else %}
+  <input type="text" name="{{ f.name }}" value="{{ f.value }}" {% if f.locked %}disabled{% endif %}>
+{% endif %}
+{% if f.locked %}<small class="lock">Locked by an environment variable.</small>{% endif %}
+{% if f.help %}<small>{{ f.help }}</small>{% endif %}
+</label>
+{%- endmacro %}
+
+{% macro status(s) -%}
+<span class="badge {{ s }}">{{ s }}</span>
+{%- endmacro %}

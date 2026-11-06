@@ -1,0 +1,39 @@
+{
+  "lastModified": "2026-10-01 12:00:00",
+  "msInfo": {"serialNr": "504F94A0FFEE", "msName": "MockMS", "projectName": "Test House", "swVersion": "15.3.1.12"},
+  "rooms": {
+    "10000000-0000-0001-ffff000000000000": {"name": "Living Room"},
+    "10000000-0000-0002-ffff000000000000": {"name": "Kitchen"}
+  },
+  "cats": {
+    "20000000-0000-0001-ffff000000000000": {"name": "Climate"},
+    "20000000-0000-0002-ffff000000000000": {"name": "Lighting"},
+    "20000000-0000-0003-ffff000000000000": {"name": "Energy"}
+  },
+  "controls": {
+    "30000000-0000-0001-ffff000000000000": {
+      "name": "Temperature", "type": "InfoOnlyAnalog",
+      "room": "10000000-0000-0001-ffff000000000000", "cat": "20000000-0000-0001-ffff000000000000",
+      "details": {"format": "%.1f°C"},
+      "states": {"value": "30000000-0000-0001-ffff000000000001"},
+      "statistic": {"frequency": 1, "outputs": [{"id": 0, "name": "Value", "format": "%.1f°C"}]}
+    },
+    "30000000-0000-0002-ffff000000000000": {
+      "name": "Ceiling Light", "type": "Switch",
+      "room": "10000000-0000-0002-ffff000000000000", "cat": "20000000-0000-0002-ffff000000000000",
+      "states": {"active": "30000000-0000-0002-ffff000000000001"}
+    },
+    "30000000-0000-0003-ffff000000000000": {
+      "name": "Power Meter", "type": "Meter",
+      "room": "10000000-0000-0002-ffff000000000000", "cat": "20000000-0000-0003-ffff000000000000",
+      "details": {"actualFormat": "%.2fkW", "totalFormat": "%.1fkWh"},
+      "states": {"actual": "30000000-0000-0003-ffff000000000001", "total": "30000000-0000-0003-ffff000000000002"},
+      "statistic": {"frequency": 1, "outputs": [{"id": 0, "name": "Total"}, {"id": 1, "name": "Actual"}]}
+    },
+    "30000000-0000-0004-ffff000000000000": {
+      "name": "Status Text", "type": "TextState",
+      "room": "10000000-0000-0001-ffff000000000000", "cat": "20000000-0000-0001-ffff000000000000",
+      "states": {"textAndIcon": "30000000-0000-0004-ffff000000000001"}
+    }
+  }
+}

@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: loxbridge
+    static_configs:
+      - targets: ["loxbridge:8080"]
+    # authorization: {credentials: <metrics token>}   # if a metrics token is set in Settings

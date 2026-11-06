@@ -1,0 +1,15 @@
+# TrueNAS: Apps -> Discover Apps -> ⋮ -> Install via YAML. Adjust the dataset paths first.
+services:
+  loxbridge:
+    image: ghcr.io/andileeb/loxbridge:0.1.0
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      TZ: Europe/Vienna
+      ADMIN_PASSWORD: change-me-on-first-start   # only used on the first start; remove afterwards
+      # SECRET_KEY: optional; otherwise /config/secret.key is generated (back it up!)
+    volumes:
+      - /mnt/tank/apps/loxbridge/config:/config
+      - /mnt/tank/backups/loxone:/backups
+      - /mnt/tank/apps/loxbridge/work:/work

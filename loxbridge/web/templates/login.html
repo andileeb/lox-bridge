@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<article style="max-width:420px;margin:3rem auto">
+  <h2>LoxBridge login</h2>
+  {% if no_user %}<p class="warn">No admin account exists yet. Set <code>ADMIN_PASSWORD</code> and restart, or run <code>python -m loxbridge reset-admin</code>.</p>{% endif %}
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="{{ base }}/login">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ next }}">
+    <label>User <input name="username" autocomplete="username" value="admin" required></label>
+    <label>Password <input type="password" name="password" autocomplete="current-password" required autofocus></label>
+    <button type="submit">Log in</button>
+  </form>
+</article>
+{% endblock %}

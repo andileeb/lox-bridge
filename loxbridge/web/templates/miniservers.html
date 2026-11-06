@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Miniservers</h2>
+<p><small>Use a <b>backup user</b> with file access (FTP rights) and a separate <b>bridge user</b> with visualisation rights only. Gateway and client Miniservers are added separately.</small></p>
+<table><tr><th>Name</th><th>URL</th><th>Backup</th><th>Bridge</th><th></th></tr>
+{% for m in items %}<tr><td>{{ m.name }}</td><td>{{ m.url }}</td>
+<td>{{ (m.backup_user ~ " (" ~ m.auth_mode ~ ")") if m.backup_enabled else "off" }}</td>
+<td>{{ m.bridge_user if m.bridge_enabled else "off" }}</td>
+<td><a href="{{ base }}/miniservers/{{ m.id }}">Edit</a></td></tr>{% endfor %}
+</table>
+<a href="{{ base }}/miniservers/new" role="button">Add Miniserver</a>
+{% endblock %}

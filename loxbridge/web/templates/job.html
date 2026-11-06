@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status %}
+{% block content %}
+<h2>{{ job.title }}</h2>
+<p>Status: <span id="status">{{ status(job.status) }}</span> · started {{ job.started|time }}</p>
+<progress id="bar" {% if job.percent is not none %}value="{{ job.percent }}" max="100"{% endif %}></progress>
+<pre class="log" id="log">{% for m in job.messages %}{{ m }}
+{% endfor %}</pre>
+<div id="summary">{% if job.finished %}<pre>{{ job.summary|tojson(indent=1) }}</pre>{% endif %}</div>
+{% if not job.finished %}
+<script>
+const log = document.getElementById("log"), bar = document.getElementById("bar");
+log.textContent = "";
+const es = new EventSource("{{ base }}/jobs/{{ job.id }}/stream");
+es.onmessage = e => { const d = JSON.parse(e.data); log.textContent += d.message + "\n"; log.scrollTop = log.scrollHeight;
+  if (d.percent != null) { bar.max = 100; bar.value = d.percent; } };
+es.addEventListener("done", e => { es.close(); const d = JSON.parse(e.data);
+  document.getElementById("status").innerHTML = '<span class="badge ' + d.status + '">' + d.status + '</span>';
+  bar.max = 100; bar.value = 100;
+  const pre = document.createElement("pre"); pre.textContent = JSON.stringify(d.summary, null, 1);
+  document.getElementById("summary").appendChild(pre);
+  if (d.summary && d.summary.download) { const a = document.createElement("a"); a.href = "{{ base }}/exports/" + d.summary.download; a.textContent = "Download CSV"; a.role = "button"; document.getElementById("summary").prepend(a); }
+});
+</script>
+{% elif job.summary and job.summary.download %}<a role="button" href="{{ base }}/exports/{{ job.summary.download }}">Download CSV</a>{% endif %}
+{% endblock %}

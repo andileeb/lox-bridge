@@ -1,0 +1,36 @@
+# Optional InfluxDB + Prometheus + Grafana stack for LoxBridge (on TrueNAS these can also be separate apps).
+#   INFLUX_TOKEN=$(openssl rand -hex 32) docker compose -f examples/compose.monitoring.yaml up -d
+# In LoxBridge add an InfluxDB output: URL http://<host>:8086, v2, org "home", bucket "loxone", token $INFLUX_TOKEN.
+services:
+  influxdb:
+    image: influxdb:2.7
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD:-change-me-please}
+      DOCKER_INFLUXDB_INIT_ORG: home
+      DOCKER_INFLUXDB_INIT_BUCKET: loxone
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:?set INFLUX_TOKEN}
+    volumes: ["influxdb:/var/lib/influxdb2"]
+    ports: ["8086:8086"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes: ["./prometheus.yml:/etc/prometheus/prometheus.yml:ro", "prometheus:/prometheus"]
+    ports: ["9090:9090"]
+    # edit prometheus.yml: target = <loxbridge host>:8080
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    restart: unless-stopped
+    environment:
+      INFLUX_TOKEN: ${INFLUX_TOKEN}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana:/var/lib/grafana
+    ports: ["3000:3000"]
+
+volumes: {influxdb: {}, prometheus: {}, grafana: {}}

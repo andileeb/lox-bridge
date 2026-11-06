@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.3.3  # no moving major tag upstream
       - run: uv sync --locked -p 3.13
       - run: uv run ruff check loxbridge tests
       - run: uv run mypy loxbridge/settings loxbridge/backup loxbridge/miniserver loxbridge/bridge

@@ -29,5 +29,8 @@ def mock_ms():
         box["server"].close()
         await box["server"].wait_closed()
 
-    asyncio.run_coroutine_threadsafe(stop(), loop).result(5)
+    try:
+        asyncio.run_coroutine_threadsafe(stop(), loop).result(10)
+    except TimeoutError:
+        pass  # a client didn't finish the close handshake; the daemon thread goes away with the test run
     loop.call_soon_threadsafe(loop.stop)

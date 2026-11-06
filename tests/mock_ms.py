@@ -264,7 +264,7 @@ def self_signed_tls() -> ssl.SSLContext:
 
 async def start(state: MockState, host: str = "127.0.0.1", port: int = 0):
     process_request, handler = make_handlers(state)
-    server = await serve(handler, host, port, process_request=process_request, ssl=self_signed_tls(),
+    server = await serve(handler, host, port, process_request=process_request, ssl=self_signed_tls(), close_timeout=1,
                          subprotocols=["remotecontrol"])  # type: ignore[list-item]
     return server, server.sockets[0].getsockname()[1]
 

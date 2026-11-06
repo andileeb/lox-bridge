@@ -16,3 +16,11 @@ services:
       - /mnt/tank/apps/loxbridge/config:/config
       - /mnt/tank/apps/loxbridge/work:/work
       - /mnt/tank/apps/loxbridge/backups:/backups
+
+# "Web UI" button in the TrueNAS apps list. Keep port = the host side of the ports line above.
+x-portals:
+  - name: Web UI
+    scheme: http
+    host: 0.0.0.0
+    port: 8080
+    path: /

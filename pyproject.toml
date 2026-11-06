@@ -3,6 +3,8 @@ name = "loxbridge"
 version = "0.1.0"
 description = "Loxone Miniserver backup and read-only data bridge"
 requires-python = ">=3.13"
+license = "MIT"
+readme = "README.md"
 dependencies = [
   "fastapi>=0.115",
   "uvicorn>=0.32",

@@ -1,0 +1,33 @@
+name: Bug report
+description: Something is broken
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: version
+    attributes:
+      label: LoxBridge version and platform
+      placeholder: 0.1.0, TrueNAS 25.10
+    validations:
+      required: true
+  - type: input
+    id: miniserver
+    attributes:
+      label: Miniserver firmware
+      placeholder: Gen 2, 16.1.5
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log excerpt
+      description: From the Logs page. Check it contains no passwords or tokens.
+      render: text

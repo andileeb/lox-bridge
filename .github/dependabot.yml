@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for all non-breaking bumps; majors still get their own PR each
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # APScheduler 4 is a rewrite with a different API (jobs/scheduler.py targets 3.x)
+      - dependency-name: apscheduler
+        versions: ['>=4']
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

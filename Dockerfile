@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     CONFIG_DIR=/config WORK_DIR=/work PORT=8080
 
 WORKDIR /app
-COPY pyproject.toml ./
+COPY pyproject.toml README.md LICENSE ./
 COPY loxbridge ./loxbridge
 RUN pip install --no-cache-dir . \
  && groupadd -g 568 apps && useradd -u 568 -g 568 -M -d /config -s /usr/sbin/nologin apps \

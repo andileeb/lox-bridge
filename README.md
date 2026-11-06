@@ -157,3 +157,13 @@ binary state events; `--extra-controls 50` adds sensors for load tests.
 
 Measured in the dev stack (one Miniserver, 54 controls exported to InfluxDB, MQTT and Prometheus, ~27 changes/s):
 about 80 MiB RSS and 1–3 % of one core.
+
+## Releases
+
+Push a `vX.Y.Z` tag (it must match `pyproject.toml`, `loxbridge/__init__.py` and the image tag in `compose.yaml`).
+`.github/workflows/release.yml` runs the tests, pushes `ghcr.io/andileeb/loxbridge:X.Y.Z` (+ `X.Y`, `latest`) for
+amd64 and arm64, and drafts a GitHub release with `compose.yaml` attached; review the notes and publish it.
+
+## License
+
+MIT

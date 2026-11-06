@@ -5,6 +5,8 @@ to be validated against a real Miniserver.
 
 ## Scope
 
+- **Main focus: backups and the live data proxy.** The history import is an extra: changes to it must never put
+  backups or the live proxy at risk, and it can be dropped if it becomes a burden.
 - **Gen 2 Miniservers only.** Miniserver URLs must be `https://` (the bridge then uses `wss://`); no Gen 1 code paths.
 
 ## Transport per job

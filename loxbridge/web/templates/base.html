@@ -15,8 +15,8 @@
   <ul><li><strong>LoxBridge</strong></li></ul>
   <ul>
     {% for href, label in [("/", "Dashboard"), ("/miniservers", "Miniservers"), ("/backup", "Backup"),
-                           ("/destinations", "Destinations"), ("/snapshots", "Snapshots"), ("/bridge", "Bridge"),
-                           ("/history", "History"), ("/notifications", "Notifications"), ("/logs", "Logs"),
+                           ("/destinations", "Destinations"), ("/snapshots", "Snapshots"), ("/bridge", "Live data"),
+                           ("/notifications", "Notifications"), ("/logs", "Logs"), ("/history", "History"),
                            ("/settings", "Settings")] %}
     <li><a href="{{ base }}{{ href }}" {% if path == base + href or (href != "/" and path.startswith(base + href)) %}class="active"{% endif %}>{{ label }}</a></li>
     {% endfor %}

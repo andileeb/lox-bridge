@@ -1,12 +1,14 @@
 # LoxBridge
 
-Backup and read-only data bridge for **Loxone Miniserver Gen 2**, packaged as one TrueNAS custom app.
+Backup and live data proxy for **Loxone Miniserver Gen 2**, packaged as one TrueNAS custom app. Two main jobs:
 
-- **Backups** of the whole SD card (programs, statistics, logs) on a schedule, to a local dataset and/or
-  S3-compatible storage (deduplicated or one archive per snapshot). Browse, download as ZIP, restore, verify, diff.
-- **Live data bridge**: Miniserver WebSocket → InfluxDB / VictoriaMetrics, Prometheus `/metrics`, MQTT (with
-  Home Assistant discovery), webhooks and a JSON API.
-- **History import**: statistics files from a backup snapshot → InfluxDB (same series as the live data) or CSV.
+- **Backups** of the whole SD card (programs, statistics, logs) on a schedule, to a local dataset and any number of
+  S3 targets (deduplicated or one archive per snapshot). Browse, download as ZIP, restore, verify, diff.
+- **Live data proxy**: one read-only WebSocket connection to the Miniserver, fanned out to InfluxDB /
+  VictoriaMetrics, Prometheus `/metrics`, MQTT (with Home Assistant discovery), webhooks and a JSON API.
+
+Extra: **history import** of statistics files from a backup snapshot → InfluxDB (same series as the live data) or CSV,
+to backfill Grafana with the time before the proxy ran.
 - Everything is set up in the web UI (port 8080); settings live in SQLite, secrets are encrypted.
 
 ## Install on TrueNAS
@@ -112,7 +114,7 @@ Minimal IAM policy:
 
 Text states (e.g. status texts) go to MQTT and the API; enable *Include text* to also send them to InfluxDB/webhooks.
 
-### History import
+### History import (extra)
 
 *History*: pick a snapshot, controls and time range; target InfluxDB or CSV. Statistics files are read from the
 backup, not from the Miniserver. Points carry the same tags as the live data, so Grafana shows one series, and

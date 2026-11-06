@@ -1,8 +1,9 @@
 # CLAUDE.md — LoxBridge
 
-Python service (one container, one asyncio process) for **Loxone Miniserver Gen 2**: scheduled SD-card backups to a
-local dataset and any number of S3 targets, a read-only live data bridge (WebSocket → InfluxDB / Prometheus / MQTT /
-webhook / JSON API), and a history import of statistics files from backups. Web UI + API on one port (8080), deployed
+Python service (one container, one asyncio process) for **Loxone Miniserver Gen 2**. Main focus: scheduled SD-card
+backups to a local dataset and any number of S3 targets, and the read-only **live data proxy** (one WebSocket →
+InfluxDB / Prometheus / MQTT / webhook / JSON API). Extra, lower priority: history import of statistics files from
+backups. Web UI + API on one port (8080), deployed
 as a TrueNAS custom app. User docs: README.md. Design decisions and open validation items: PLAN.md. This file is for
 working on the code.
 
@@ -87,7 +88,7 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
 
 ## Known bugs / open items
 
-- `statsfile.py` is ported from `../lox-datamanager` (`src/main/statfile.ts`; LoxStatEdit + sarnau layout,
+- `statsfile.py` is ported from [lox-datamanager](https://github.com/andileeb/lox-datamanager) (`src/main/statfile.ts`; LoxStatEdit + sarnau layout,
   stride detected per file, `<uuid>[_N].<YYYYMM>` names) but only tested with synthetic files built by
   `tests/build_statfile.py`. Drop real files into `tests/fixtures/` (`test_real_fixture_files` picks them up).
   statisticV2 suffixes are mapped for Meter only (`history.METER_V2`); others get `stat<N>_<i>` state names.

@@ -9,6 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -50,14 +51,21 @@ class Services:
         return self.store.config
 
     def bootstrap_admin(self) -> None:
-        if self.store.has_user():
-            return
+        """ADMIN_PASSWORD wins on every start (like the TrueNAS app form), so editing it in the app YAML works."""
         pw = os.environ.get("ADMIN_PASSWORD")
         if not pw:
-            log.warning("no admin account yet: set ADMIN_PASSWORD for the first start (or run 'reset-admin')")
+            if not self.store.has_user():
+                log.warning("no admin account yet: set ADMIN_PASSWORD (or run 'reset-admin')")
             return
-        self.store.set_user(os.environ.get("ADMIN_USER", "admin"), HASHER.hash(pw))
-        log.info("admin account created")
+        user = os.environ.get("ADMIN_USER", "admin")
+        h = self.store.user_hash(user)
+        try:
+            if h and HASHER.verify(h, pw):
+                return
+        except VerifyMismatchError:
+            pass
+        self.store.set_user(user, HASHER.hash(pw))
+        log.info("admin password %s from ADMIN_PASSWORD", "updated" if h else "set")
 
     async def start(self) -> None:
         self.jobs.loop = asyncio.get_running_loop()

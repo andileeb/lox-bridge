@@ -94,3 +94,14 @@ def test_api_token(client):
     anon = TestClient(client.app)
     assert anon.get("/api/v1/states", headers={"Authorization": f"Bearer {tok}"}).status_code == 200
     assert anon.get("/api/v1/states", headers={"Authorization": "Bearer lxb_wrong"}).status_code == 401
+
+
+def test_admin_password_env_wins_on_restart(tmp_path, monkeypatch):
+    """First start with one password, restart with another: the new ADMIN_PASSWORD must work."""
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    for pw in ("firstpass1", "secondpass2"):
+        monkeypatch.setenv("ADMIN_PASSWORD", pw)
+        with TestClient(create_app(tmp_path / "config", tmp_path / "work")) as c:
+            r = c.post("/login", data={"username": "admin", "password": pw, "csrf": csrf(c, "/login")},
+                       follow_redirects=False)
+            assert r.status_code == 303, pw

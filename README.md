@@ -19,8 +19,8 @@ to backfill Grafana with the time before the proxy ran.
    user (568, override with `PUID`/`PGID`), then runs as that user.
 2. Optional: want the backups in their own dataset (own snapshot schedule or quota)? Create it, e.g.
    `tank/backups/loxone`, and put its path on the `/backups` line. Permissions are fixed automatically.
-3. Open `http://<truenas>:18568` (or the **Web UI** button in the apps list), log in as `admin` with that password. Remove `ADMIN_PASSWORD` afterwards
-   (it's only used on the first start). Lost the password? `docker exec -it <container> python -m loxbridge reset-admin`.
+3. Open `http://<truenas>:18568` (or the **Web UI** button in the apps list), log in as `admin` with that password. `ADMIN_PASSWORD` is applied on every start, so to
+   change the password edit it in the app YAML (or remove the line and change it under *Settings*).
 4. **Back up `/config/secret.key`** (or set `SECRET_KEY`). Without it the stored passwords can't be decrypted.
 
 Recommended: a periodic ZFS snapshot task on the dataset that holds the backups. Local snapshots are hard-linked, so ZFS snapshots
@@ -28,7 +28,7 @@ of them cost almost nothing, and they protect against deletion by the app itself
 
 | Env var | Purpose |
 |---|---|
-| `ADMIN_USER`, `ADMIN_PASSWORD` | first-start admin account |
+| `ADMIN_USER`, `ADMIN_PASSWORD` | admin account, applied on every start |
 | `SECRET_KEY` / `SECRET_KEY_FILE` | key for secret encryption (default: generated `/config/secret.key`) |
 | `TZ` | time zone for schedules and statistics timestamps |
 | `PORT`, `BASE_URL` | listen port; path prefix when running behind a reverse proxy subpath |

@@ -1,0 +1,13 @@
+{% if s.error %}<p class="error">{{ s.error }}</p>{% endif %}
+{% if s.files is defined %}
+<div class="stats" style="margin:.8rem 0">
+  <div><span class="label">Files</span><span class="value">{{ s.files }}</span></div>
+  {% if s.size is defined %}<div><span class="label">Size</span><span class="value">{{ s.size|size }}</span></div>{% endif %}
+  {% if s.downloaded is defined %}<div><span class="label">Downloaded</span><span class="value">{{ s.downloaded }}</span></div>{% endif %}
+  {% if s.duration is defined %}<div><span class="label">Duration</span><span class="value">{{ s.duration }} s</span></div>{% endif %}
+</div>{% endif %}
+{% if s.destinations %}<ul class="results">{% for d, x in s.destinations.items() %}<li class="{{ 'ok' if x.ok else 'error' }}">{{ '✔' if x.ok else '✘' }} {{ d }}{% if x.error %}: {{ x.error }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+{% if s.errors %}<p class="warn">{{ s.errors|length }} files could not be read:</p><ul>{% for e in s.errors[:20] %}<li><code>{{ e.path }}</code>: {{ e.error }}</li>{% endfor %}</ul>{% endif %}
+{% if s.problems is defined %}<p class="{{ 'ok' if not s.problems else 'error' }}">{{ s.problems }} problems</p>{% endif %}
+{% if s.points is defined %}<p>{{ s.points }} points imported</p>{% endif %}
+{% if s.download %}<a role="button" href="{{ base }}/exports/{{ s.download }}">Download CSV</a>{% endif %}

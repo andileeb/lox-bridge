@@ -9,7 +9,8 @@ Backup and live data proxy for **Loxone Miniserver Gen 2**, packaged as one True
 
 Extra: **history import** of statistics files from a backup snapshot → InfluxDB (same series as the live data) or CSV,
 to backfill Grafana with the time before the proxy ran.
-- Everything is set up in the web UI (port 8080); settings live in SQLite, secrets are encrypted.
+- Everything is set up in the web UI (works on phone, tablet and desktop); settings live in SQLite, secrets are
+  encrypted.
 
 ## Install on TrueNAS
 
@@ -21,6 +22,8 @@ to backfill Grafana with the time before the proxy ran.
    `tank/backups/loxone`, and put its path on the `/backups` line. Permissions are fixed automatically.
 3. Open `http://<truenas>:18568` (or the **Web UI** button in the apps list), log in as `admin` with that password. `ADMIN_PASSWORD` is applied on every start, so to
    change the password edit it in the app YAML (or remove the line and change it under *Settings*).
+   Then **Get started**: LoxBridge searches your network for the Miniserver, you enter a Loxone user and pick a
+   schedule, and the first backup runs right away.
 4. **Back up `/config/secret.key`** (or set `SECRET_KEY`). Without it the stored passwords can't be decrypted.
 
 Recommended: a periodic ZFS snapshot task on the dataset that holds the backups. Local snapshots are hard-linked, so ZFS snapshots
@@ -35,6 +38,13 @@ of them cost almost nothing, and they protect against deletion by the app itself
 | `LOXBRIDGE_<PATH>` | override any setting, e.g. `LOXBRIDGE_BACKUP__SCHEDULE=04:00`, `LOXBRIDGE_MINISERVERS__0__URL=https://…`. Overridden settings show as locked in the UI. |
 
 Volumes: `/config` (DB, secret key), `/backups` (local destination), `/work` (staging, S3 index, caches, exports).
+
+## Finding the Miniserver
+
+The setup page probes `https://<ip>/jdev/cfg/apiKey` (needs no login) on the /24 network of the NAS address you
+opened the UI with and on your browser's /24, so a Miniserver in another VLAN than the NAS is found as long as your
+phone or PC is in that VLAN. Otherwise use *Search another network* (`192.168.3.0/24` or an IP). Loxone's UDP search
+and mDNS don't pass the Docker bridge network TrueNAS apps run in, so they aren't used.
 
 ## Miniserver users
 
@@ -101,7 +111,8 @@ Minimal IAM policy:
 
 1. *Miniservers*: enable *Bridge*, set the bridge user, *Test* (logs in, reads the structure file, shows serial and
    firmware).
-2. *Bridge*: add an output, then tick the controls it exports (bulk selection by room, category or type).
+2. *Live data*: add an output, then tick the controls it exports (search, filter by room, category or type, tick all
+   shown).
 3. Per output: change filter (*deadband*, *heartbeat*), batching, queue size. Each output has its own queue; when it
    overflows the oldest values are dropped and counted (`loxbridge_sink_dropped_total`). A slow or broken output
    never blocks the others.

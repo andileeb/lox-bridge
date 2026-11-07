@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% from "_macros.html" import status %}
 {% block content %}
-<h2>Snapshots</h2>
-<form class="grid" method="get">
-  <select name="ms" onchange="this.form.submit()"><option value="">All Miniservers</option>{% for m in miniservers %}<option value="{{ m.id }}" {% if m.id == ms %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select>
-  <select name="dest" onchange="this.form.submit()"><option value="">All destinations</option>{% for d in destinations %}<option value="{{ d.id }}" {% if d.id == dest %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
+<div class="page-head"><h1>Snapshots</h1></div>
+<form class="toolbar" method="get">
+  <select name="ms" onchange="this.form.submit()" aria-label="Miniserver"><option value="">All Miniservers</option>{% for m in miniservers %}<option value="{{ m.id }}" {% if m.id == ms %}selected{% endif %}>{{ m.name }}</option>{% endfor %}</select>
+  <select name="dest" onchange="this.form.submit()" aria-label="Destination"><option value="">All destinations</option>{% for d in destinations %}<option value="{{ d.id }}" {% if d.id == dest %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
 </form>
-<div class="scroll"><table>
-<tr><th>Snapshot</th><th>Miniserver</th><th>Destination</th><th>Created</th><th class="num">Files</th><th class="num">Size</th><th class="num">Errors</th><th></th></tr>
+<article class="scroll"><table>
+<thead><tr><th>Snapshot</th><th class="hide-sm">Miniserver</th><th>Where</th><th class="num hide-sm">Files</th><th class="num">Size</th><th></th></tr></thead>
+<tbody>
 {% for s in items %}
-{% if s.error %}<tr><td colspan="8" class="error">{{ s.destination }}: {{ s.error }}</td></tr>{% else %}
-<tr><td><a href="{{ base }}/snapshots/{{ s.destination }}/{{ s.miniserver }}/{{ s.snapshot }}">{{ s.snapshot }}</a></td>
-<td>{{ s.miniserver }}</td><td>{{ s.destination }}</td><td>{{ s.created }}</td><td class="num">{{ s.files }}</td>
-<td class="num">{{ s.size|size }}</td><td class="num {{ 'warn' if s.errors else '' }}">{{ s.errors }}</td>
-<td><a href="{{ base }}/api/v1/snapshots/{{ s.destination }}/{{ s.miniserver }}/{{ s.snapshot }}/download">ZIP</a></td></tr>
+{% if s.error %}<tr><td colspan="6" class="error">{{ s.destination }}: {{ s.error }}</td></tr>{% else %}
+<tr><td><a href="{{ base }}/snapshots/{{ s.destination }}/{{ s.miniserver }}/{{ s.snapshot }}">{{ s.snapshot }}</a>{% if s.errors %} <span class="badge partial" title="files the Miniserver refused">{{ s.errors }} errors</span>{% endif %}</td>
+<td class="hide-sm">{{ s.miniserver }}</td><td>{{ s.destination }}</td><td class="num hide-sm">{{ s.files }}</td>
+<td class="num">{{ s.size|size }}</td>
+<td><a href="{{ base }}/api/v1/snapshots/{{ s.destination }}/{{ s.miniserver }}/{{ s.snapshot }}/download" title="Download as ZIP">ZIP</a></td></tr>
 {% endif %}
-{% else %}<tr><td colspan="8">No snapshots yet.</td></tr>{% endfor %}
-</table></div>
+{% else %}<tr><td colspan="6" class="muted">No snapshots yet. Run a backup from the Overview.</td></tr>{% endfor %}
+</tbody></table></article>
 {% endblock %}

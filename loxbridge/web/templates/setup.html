@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Connect a Miniserver{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Connect a Miniserver</h1>
+  <p class="muted">Three steps, about a minute. LoxBridge only reads from the Miniserver and never changes it.</p></div></div>
+<form id="setup" hx-disinherit="*" hx-post="{{ base }}/setup" hx-target="#setup-result" hx-indicator="#setup-busy" hx-disabled-elt="#go">
+  <article class="step"><span class="num">1</span>
+    <h3>Find your Miniserver</h3>
+    <div id="found" hx-post="{{ base }}/setup/scan" hx-trigger="load" hx-params="none" hx-target="this" hx-indicator="this">
+      <p aria-busy="true" class="muted">Searching your network…</p>
+    </div>
+    <label>Address
+      <input id="url" name="url" placeholder="e.g. 192.168.1.77" required autocapitalize="off" autocorrect="off" spellcheck="false">
+      <small>Picked automatically when one is found. Gen 2 only (HTTPS).</small></label>
+  </article>
+
+  <article class="step"><span class="num">2</span>
+    <h3>Log in</h3>
+    <div class="fields">
+      <label>Loxone user <input name="user" required autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <label>Password <input type="password" name="password" required autocomplete="new-password"></label>
+    </div>
+    <small class="muted">A user with FTP rights, e.g. your admin user. You can use a separate, low-privileged user for
+      live data later.</small>
+    <label style="margin-top:.8rem"><input type="checkbox" role="switch" name="live"> Also stream live data with this user</label>
+  </article>
+
+  <article class="step"><span class="num">3</span>
+    <h3>Back up</h3>
+    {% if locked_schedule %}<p>Schedule <code>{{ schedule }}</code> <small class="lock">locked by an environment variable</small></p>
+    {% else %}
+    <div class="choices">
+      {% set known = schedules|map("first")|list %}
+      {% for value, label in schedules %}
+      <label class="choice"><input type="radio" name="schedule" value="{{ value }}" {% if value == schedule %}checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+      {% if schedule not in known %}<label class="choice"><input type="radio" name="schedule" value="{{ schedule }}" checked> Keep <code>{{ schedule }}</code></label>{% endif %}
+    </div>{% endif %}
+    <p class="muted" style="margin:0">{% if dest %}Snapshots go to <b>{{ dest.name }}</b>{% if dest.type == "local" %} (<code>{{ dest.path }}</code>){% endif %}, the newest {{ dest.keep }} are kept.
+      {% else %}Snapshots go to <code>/backups</code>.{% endif %} Add S3 targets later under Backups → Destinations.</p>
+  </article>
+
+  <div class="actions">
+    <button id="go" type="submit">{{ icon("play") }} Connect and back up now</button>
+    <span id="setup-busy" class="htmx-indicator" aria-busy="true">Logging in…</span>
+  </div>
+  <div id="setup-result" role="alert"></div>
+</form>
+<script>
+function pick(btn) {
+  document.querySelectorAll(".choice.selected").forEach(b => b.classList.remove("selected"));
+  btn.classList.add("selected");
+  document.getElementById("url").value = btn.dataset.url;
+  document.querySelector("input[name=user]").focus();
+}
+document.body.addEventListener("htmx:afterSwap", e => {
+  if (e.target.id !== "found") return;
+  const c = e.target.querySelectorAll(".choice[data-new]");
+  if (c.length === 1 && !document.getElementById("url").value) pick(c[0]);
+});
+</script>
+{% endblock %}

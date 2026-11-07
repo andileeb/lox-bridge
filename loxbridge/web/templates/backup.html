@@ -1,28 +1,39 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
 {% block content %}
-<h2>Backup</h2>
+<div class="page-head"><h1>Schedule</h1></div>
 <form method="post" action="{{ base }}/backup">
   <input type="hidden" name="csrf" value="{{ csrf }}">
-  {% for f in fields %}
-    {% if f.name == "schedule" %}{{ field(f) }}<small>Daily times like <code>03:00, 15:30</code> or a cron expression like <code>0 3 * * 1-5</code>.
-      {% for id, n in next.items() %}Next run {{ id }}: {{ n.strftime("%Y-%m-%d %H:%M") if n else "–" }}. {% endfor %}</small>
-    {% elif f.name == "excludes" %}<label>Excludes
-      <textarea id="excludes" name="excludes" rows="4" {% if f.locked %}disabled{% endif %}>{{ f.value }}</textarea>
-      <small>fnmatch patterns on the SD card path, one per line, e.g. <code>log/*</code>. Use the tree below to pick.</small></label>
-    {% elif f.name == "history_sink" %}<label>History sink (InfluxDB output for auto import)
-      <select name="history_sink"><option value="">(none)</option>{% for s in influx %}<option value="{{ s.id }}" {% if s.id == f.value %}selected{% endif %}>{{ s.name or s.id }}</option>{% endfor %}</select></label>
-    {% else %}{{ field(f) }}{% endif %}
-  {% endfor %}
-  <p><small>Retention is set per destination (<a href="{{ base }}/destinations">Destinations</a>).</small></p>
-  <button>Save</button>
+  <article><h3>When</h3>
+    {% set f = fields.schedule %}
+    <label class="{% if f.locked %}locked{% endif %}">Schedule
+      <input id="schedule" name="schedule" value="{{ f.value }}" {% if f.locked %}disabled{% endif %}>
+      <small>Daily times like <code>03:00, 15:30</code> or a cron expression like <code>0 3 * * 1-5</code>.</small></label>
+    {% if not f.locked %}<div class="actions" style="margin-bottom:.8rem">{% for value, label in schedules %}
+      <button type="button" class="outline secondary sm" onclick="document.getElementById('schedule').value = {{ value|tojson|forceescape }}">{{ label }}</button>{% endfor %}</div>{% endif %}
+    {% for m in miniservers %}<small class="muted">Next run {{ m.name }}: {{ next[m.id]|when }}</small><br>{% endfor %}
+  </article>
+  <article><h3>What</h3>
+    {% set f = fields.excludes %}
+    <label>Skip these files
+      <textarea id="excludes" name="excludes" rows="3" {% if f.locked %}disabled{% endif %}>{{ f.value }}</textarea>
+      <small>Patterns on the SD card path, one per line, e.g. <code>log/*</code>. Pick from the SD card below.</small></label>
+    {% for m in miniservers %}
+    <details><summary>SD card of {{ m.name }}</summary>
+      <div hx-get="{{ base }}/backup/tree?ms={{ m.id }}" hx-trigger="toggle from:closest details once" aria-busy="true"></div>
+    </details>
+    {% endfor %}
+  </article>
+  <details class="card"><summary>Advanced</summary>
+    <div class="fields">{{ field(fields.request_delay) }}{{ field(fields.full_download) }}{{ field(fields.auto_import_history) }}
+      <label>History import target
+        <select name="history_sink"><option value="">(none)</option>{% for s in influx %}<option value="{{ s.id }}" {% if s.id == fields.history_sink.value %}selected{% endif %}>{{ s.name or s.id }}</option>{% endfor %}</select>
+        <small>InfluxDB output that receives statistics after every backup.</small></label>
+    </div>
+  </details>
+  <div class="form-bar"><div class="actions"><button>Save</button>
+    <small class="muted">How many snapshots are kept is set per <a href="{{ base }}/destinations">destination</a>.</small></div></div>
 </form>
-<h3>SD card tree</h3>
-{% for m in miniservers %}
-<details><summary>{{ m.name }}</summary>
-  <div hx-get="{{ base }}/backup/tree?ms={{ m.id }}" hx-trigger="toggle from:closest details once" aria-busy="true"></div>
-</details>
-{% endfor %}
 <script>
 function addExclude(p) {
   const t = document.getElementById("excludes");

@@ -157,8 +157,16 @@ def make_handlers(state: MockState):
             state.tokens.add(tok)
             valid = int(time.time()) - EPOCH_2009 + 28 * 86400
             return _resp(200, ll(path[1:], {"token": tok, "validUntil": valid, "tokenRights": 4}))
+        if path == "/jdev/cfg/apiKey":  # unauthenticated, used for discovery (format of firmware 17.3)
+            i = state.structure["msInfo"]
+            snr = ":".join(i["serialNr"][n:n + 2] for n in range(0, 12, 2))
+            return _resp(200, ll("dev/cfg/apiKey", f"{{'snr': '{snr}', 'version':'{i['swVersion']}', 'key':'00', "
+                                                   f"'isInTrust':false, 'local':true,'address':'127.0.0.1', "
+                                                   f"'certTLD':'com', 'httpsStatus':1}}"))
         if not authed(request, query):
             return _resp(401, "Unauthorized")
+        if path == "/data/LoxAPP3.json":
+            return _resp(200, json.dumps(state.structure), "application/json")
         if path == "/jdev/cfg/version":
             return _resp(200, ll("dev/cfg/version", state.structure["msInfo"]["swVersion"]))
         if path.startswith("/dev/fslist"):

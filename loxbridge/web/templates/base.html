@@ -1,34 +1,42 @@
-<!doctype html>
+{% from "_macros.html" import icon, logo %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>{% block title %}LoxBridge{% endblock %}</title>
+<meta name="theme-color" content="#3d9b35">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LoxBridge">
+<link rel="icon" href="{{ base }}/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ base }}/static/icon.svg">
+<title>{% block title %}{{ title or (section[1] if section else "") }}{% endblock %} · LoxBridge</title>
 <link rel="stylesheet" href="{{ base }}/static/pico.min.css">
-<link rel="stylesheet" href="{{ base }}/static/app.css">
+<link rel="stylesheet" href="{{ base }}/static/app.css?v={{ version }}">
 <script src="{{ base }}/static/htmx.min.js"></script>
 </head>
 <body hx-headers='{"X-CSRF-Token": "{{ csrf }}"}'>
 {% if user %}
-<nav class="top">
-  <ul><li><strong>LoxBridge</strong></li></ul>
-  <ul>
-    {% for href, label in [("/", "Dashboard"), ("/miniservers", "Miniservers"), ("/backup", "Backup"),
-                           ("/destinations", "Destinations"), ("/snapshots", "Snapshots"), ("/bridge", "Live data"),
-                           ("/notifications", "Notifications"), ("/logs", "Logs"), ("/history", "History"),
-                           ("/settings", "Settings")] %}
-    <li><a href="{{ base }}{{ href }}" {% if path == base + href or (href != "/" and path.startswith(base + href)) %}class="active"{% endif %}>{{ label }}</a></li>
+<header class="topbar">
+  <a class="brand" href="{{ base }}/">{{ logo() }}<span>LoxBridge</span></a>
+  <nav class="mainnav" aria-label="Main">
+    {% for href, label, ic, tabs, _ in nav %}
+    <a href="{{ base }}{{ href }}" {% if section and section[0] == href %}class="active" aria-current="page"{% endif %}>{{ icon(ic) }}<span>{{ label }}</span></a>
     {% endfor %}
-    <li><form method="post" action="{{ base }}/logout" style="margin:0"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline secondary" style="padding:.2rem .6rem">Log out</button></form></li>
-  </ul>
-</nav>
+  </nav>
+  <form method="post" action="{{ base }}/logout"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="icon-btn" title="Log out" aria-label="Log out">{{ icon("logout") }}</button></form>
+</header>
 {% endif %}
 <main class="container">
+{% if user and section and section[3] %}
+<nav class="tabs" aria-label="{{ section[1] }}">{% for href, label in section[3] %}
+  <a href="{{ base }}{{ href }}" {% if rel == href or rel.startswith(href + "/") %}class="active"{% endif %}>{{ label }}</a>{% endfor %}
+</nav>
+{% endif %}
 {% if generated_key and user %}
 <div class="flash err">A secret key was generated at <code>/config/secret.key</code>. Back it up: without it, stored passwords can't be decrypted.</div>
 {% endif %}
-{% if flash %}<div class="flash {% if flash.startswith('Error') %}err{% endif %}">{{ flash }}</div>{% endif %}
+{% if flash %}<div class="flash {% if flash.startswith('Error') %}err{% endif %}" role="status">{{ flash }}</div>{% endif %}
 {% block content %}{% endblock %}
 </main>
 <footer class="container"><small>LoxBridge {{ version }}</small></footer>

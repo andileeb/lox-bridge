@@ -105,3 +105,38 @@ def test_admin_password_env_wins_on_restart(tmp_path, monkeypatch):
             r = c.post("/login", data={"username": "admin", "password": pw, "csrf": csrf(c, "/login")},
                        follow_redirects=False)
             assert r.status_code == 303, pw
+
+
+def test_setup_wizard(client, mock_ms, tmp_path):
+    """Find the mock by address, log in, pick a schedule: one POST saves it and starts the first backup."""
+    url, _ = mock_ms
+    login(client)
+    t = csrf(client, "/setup")
+    client.post("/destinations/local", data={"csrf": t, "name": "Local", "enabled": "on", "keep": "3",
+                                              "path": str(tmp_path / "backups")})
+    hostport = url.removeprefix("https://")
+    found = client.post("/setup/scan", data={"network": hostport}, headers={"X-CSRF-Token": t}).text
+    assert "504F94A0FFEE" in found and "15.3.1.12" in found
+    bad = client.post("/setup", data={"url": hostport, "user": "admin", "password": "wrong"},
+                      headers={"X-CSRF-Token": t})
+    assert "Could not log in" in bad.text and "HX-Redirect" not in bad.headers
+    r = client.post("/setup", data={"url": hostport, "user": "admin", "password": "secret", "live": "on",
+                                    "schedule": "0 3 * * 0"}, headers={"X-CSRF-Token": t})
+    job = r.headers["HX-Redirect"].rsplit("/", 1)[1]
+    assert wait_job(client, job)["status"] in ("ok", "partial")
+    cfg = client.get("/api/v1/config").json()
+    ms = cfg["miniservers"][0]
+    assert (ms["name"], ms["url"], ms["bridge_enabled"]) == ("MockMS", url, True)
+    assert cfg["backup"]["schedule"] == "0 3 * * 0"
+    assert "MockMS" in client.get("/").text
+
+
+def test_test_button_uses_unsaved_form(client, mock_ms):
+    url, _ = mock_ms
+    login(client)
+    t = csrf(client, "/setup")
+    client.post("/setup", data={"url": url, "user": "admin", "password": "secret"}, headers={"X-CSRF-Token": t})
+    form = {"name": "x", "url": url, "backup_enabled": "on", "backup_user": "admin", "backup_password": "nope"}
+    assert "✘" in client.post("/miniservers/ms1/test", data=form, headers={"X-CSRF-Token": t}).text
+    form["backup_password"] = ""  # empty = the stored (correct) one
+    assert "login ok" in client.post("/miniservers/ms1/test", data=form, headers={"X-CSRF-Token": t}).text

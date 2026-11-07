@@ -1,32 +1,43 @@
-{% from "_macros.html" import status %}
+{% from "_macros.html" import dot, icon %}
 {% for r in rows %}
 <article>
-  <header class="actions" style="justify-content:space-between">
-    <strong>{{ r.ms.name }}</strong> <small>{{ r.ms.url }}{% if r.firmware %} · firmware {{ r.firmware }}{% endif %}</small>
+  <div class="card-head">
+    <div><h3>{{ r.ms.name }}</h3><small class="muted">{{ r.ms.url }}{% if r.firmware %} · firmware {{ r.firmware }}{% endif %}</small></div>
     <form method="post" action="{{ base }}/miniservers/{{ r.ms.id }}/backup"><input type="hidden" name="csrf" value="{{ csrf }}">
-      {% if r.running %}<a href="{{ base }}/jobs/{{ r.running.id }}" aria-busy="true">Backup running…</a>
-      {% else %}<button {% if not r.ms.backup_user %}disabled title="no backup user"{% endif %}>Back up now</button>{% endif %}
+      {% if r.running %}<a role="button" class="secondary sm" href="{{ base }}/jobs/{{ r.running.id }}" aria-busy="true">Backing up…</a>
+      {% elif r.ms.backup_user and r.ms.backup_enabled %}<button class="sm">{{ icon("play") }} Back up now</button>
+      {% else %}<a role="button" class="outline sm" href="{{ base }}/miniservers/{{ r.ms.id }}">Set up backup</a>{% endif %}
     </form>
-  </header>
-  <div class="grid">
-    <div><small>Last backup</small><br>
-      {% if r.last %}{{ status(r.last.status) }} {{ r.last.finished|time }}<br>
-        {% if r.last.summary and r.last.summary.files is defined %}<small>{{ r.last.summary.files }} files, {{ r.last.summary.size|size }}, {{ r.last.summary.duration }} s</small>{% endif %}
-        {% if r.last.summary and r.last.summary.error %}<br><small class="error">{{ r.last.summary.error }}</small>{% endif %}
-        {% if r.last.summary and r.last.summary.destinations %}<br>{% for d, x in r.last.summary.destinations.items() %}<small class="{{ 'ok' if x.ok else 'error' }}" title="{{ x.error or '' }}">{{ d }} {{ '✔' if x.ok else '✘' }}</small> {% endfor %}{% endif %}
-      {% else %}never{% endif %}</div>
-    <div><small>Next run</small><br>{{ r.next.strftime("%Y-%m-%d %H:%M") if r.next else "not scheduled" }}</div>
-    <div><small>Bridge</small><br>
-      {% if r.bridge %}{% if r.bridge.connected %}<span class="ok">connected</span> · {{ r.bridge.rate }} events/s
-      {% else %}<span class="error">offline</span> <small>{{ r.bridge.error }}</small>{% endif %}
-      {% else %}off{% endif %}</div>
+  </div>
+  <div class="stats">
+    <div><span class="label">Last backup</span>
+      {% if r.last %}<span class="value">{{ dot(r.last.status) }}<a href="{{ base }}/jobs/{{ r.last.id }}" title="{{ r.last.finished|time }}">{{ r.last.finished|ago }}</a></span>
+        {% set s = r.last.summary or {} %}
+        {% if s.files is defined %}<small>{{ s.files }} files · {{ s.size|size }}</small>{% endif %}
+        {% if s.error %}<small class="error">{{ s.error }}</small>{% endif %}
+        {% if s.destinations %}<small>{% for d, x in s.destinations.items() %}<span class="{{ 'ok' if x.ok else 'error' }}" title="{{ x.error or '' }}">{{ d }} {{ '✔' if x.ok else '✘' }}</span> {% endfor %}</small>{% endif %}
+      {% else %}<span class="value">{{ dot("off") }}never</span>{% endif %}</div>
+    <div><span class="label">Next backup</span><span class="value">{{ r.next|when if r.ms.backup_enabled else "off" }}</span></div>
+    <div><span class="label">Live data</span>
+      {% if r.bridge %}{% if r.bridge.connected %}<span class="value">{{ dot("ok") }}connected</span><small>{{ r.bridge.rate }} values/s</small>
+      {% else %}<span class="value">{{ dot("err") }}offline</span><small class="error">{{ r.bridge.error }}</small>{% endif %}
+      {% else %}<span class="value">{{ dot("off") }}off</span><small><a href="{{ base }}/miniservers/{{ r.ms.id }}">enable</a></small>{% endif %}</div>
   </div>
 </article>
 {% endfor %}
-{% if sinks %}
-<article><header><strong>Outputs</strong></header>
-<table><tr><th>Output</th><th>Type</th><th>Queue</th><th>Status</th></tr>
-{% for s in sinks %}<tr><td>{{ s.id }}</td><td>{{ s.type }}</td><td>{{ s.queue }}</td>
-<td>{% if s.error %}<span class="error">{{ s.error }}</span>{% elif s.last_ok %}<span class="ok">ok</span> {{ s.last_ok|time }}{% else %}waiting{% endif %}</td></tr>{% endfor %}
-</table></article>
-{% endif %}
+<div class="cards">
+<article>
+  <div class="card-head"><h3>Backup destinations</h3><a class="sm" href="{{ base }}/destinations">Manage</a></div>
+  <div class="list">{% for d in destinations %}
+    <div class="row"><div class="grow">{{ dot("ok" if d.enabled else "off") }}<b>{{ d.name }}</b>
+      <small>{% if d.type == "local" %}{{ d.path }}{% else %}{{ d.endpoint or "AWS" }} · {{ d.bucket }}{% endif %} · keeps {{ d.keep }}</small></div></div>
+  {% else %}<p class="muted">None yet.</p>{% endfor %}</div>
+</article>
+<article>
+  <div class="card-head"><h3>Live data outputs</h3><a class="sm" href="{{ base }}/bridge">Manage</a></div>
+  <div class="list">{% for s in sinks %}
+    <div class="row"><div class="grow">{{ dot("err" if s.error else ("ok" if s.last_ok else "off")) }}<b>{{ s.id }}</b>
+      <small>{{ s.type }} · {% if s.error %}<span class="error">{{ s.error }}</span>{% elif s.last_ok %}sent {{ s.last_ok|ago }}{% else %}waiting{% endif %}{% if s.queue %} · {{ s.queue }} queued{% endif %}</small></div></div>
+  {% else %}<p class="muted">None yet. Send values to InfluxDB, MQTT / Home Assistant, Prometheus or a webhook.</p>{% endfor %}</div>
+</article>
+</div>

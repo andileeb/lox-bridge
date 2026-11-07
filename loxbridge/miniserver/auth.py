@@ -32,7 +32,7 @@ class Token:
 
 # ponytail: in-memory per process (one token per Miniserver user while the server runs). A CLI run acquires a
 # fresh one; persist tokens encrypted in the settings DB if the Miniserver's token list ever fills up.
-TOKENS: dict[tuple[str, str], Token] = {}
+TOKENS: dict[tuple[str, str, str], Token] = {}  # (base url, user, sha256(password))
 
 
 def client_uuid(base: str, user: str) -> str:

@@ -1,25 +1,30 @@
 {% extends "base.html" %}
 {% from "_macros.html" import field %}
 {% block content %}
-<h2>{{ title }}</h2>
-{% if note %}<p><small>{{ note }}</small></p>{% endif %}
+<div class="page-head"><div><h1>{{ title }}</h1>{% if note %}<p class="muted"><small>{{ note }}</small></p>{% endif %}</div>
+  {% if back %}<a href="{{ base }}{{ back }}" class="secondary">← Back</a>{% endif %}</div>
 <form method="post" action="{{ base }}{{ action }}">
   <input type="hidden" name="csrf" value="{{ csrf }}">
-  <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr))">
-  {% for f in fields %}<div>{{ field(f) }}</div>{% endfor %}
-  </div>
-  <div class="actions">
-    <button type="submit">Save</button>
-    {% if back %}<a href="{{ base }}{{ back }}" role="button" class="secondary outline">Back</a>{% endif %}
-    {% if test_url %}<button type="button" class="secondary" hx-post="{{ base }}{{ test_url }}" hx-target="#test-result" hx-indicator="#test-busy">Test</button>
-    <span id="test-busy" class="htmx-indicator" aria-busy="true"></span>{% endif %}
+  {% for title, fs in sections %}
+  {% if title == "Advanced" %}
+  <details class="card"><summary>Advanced</summary><div class="fields">{% for f in fs %}{{ field(f) }}{% endfor %}</div></details>
+  {% else %}
+  <article>{% if title %}<h3>{{ title }}</h3>{% endif %}<div class="fields">{% for f in fs %}{{ field(f) }}{% endfor %}</div></article>
+  {% endif %}
+  {% endfor %}
+  <div class="form-bar">
+    <div class="actions">
+      <button type="submit">Save</button>
+      {% if test_url %}<button type="button" class="secondary" hx-post="{{ base }}{{ test_url }}" hx-target="#test-result"
+        hx-indicator="#test-busy" hx-disabled-elt="this">Test</button>
+      <span id="test-busy" class="htmx-indicator" aria-busy="true">Testing…</span>{% endif %}
+    </div>
+    <div id="test-result" role="status"></div>
   </div>
 </form>
-<div id="test-result"></div>
-{% if test_url %}<p><small>Test uses the saved settings: save first.</small></p>{% endif %}
 {% if delete_url %}
-<form method="post" action="{{ base }}{{ delete_url }}" onsubmit="return confirm('Delete?')">
-  <input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline contrast">Delete</button>
+<form class="danger" method="post" action="{{ base }}{{ delete_url }}" onsubmit="return confirm({{ ('Delete ' ~ title ~ '?')|tojson|forceescape }})">
+  <input type="hidden" name="csrf" value="{{ csrf }}"><button class="outline contrast sm">Delete</button>
 </form>
 {% endif %}
 {% endblock %}

@@ -1,60 +1,80 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon, dot %}
 {% block content %}
-<h2>Live data</h2>
-<p><small>Read-only: LoxBridge never sends commands to the Miniserver. Enable the bridge and set a bridge user per Miniserver on the <a href="{{ base }}/miniservers">Miniservers</a> page.</small></p>
-<article><header><strong>Outputs</strong></header>
-<table><tr><th>Name</th><th>Type</th><th>Exports</th><th>Status</th><th></th></tr>
+<div class="page-head"><div><h1>Live data</h1>
+  <p class="muted"><small>One read-only connection per Miniserver, forwarded to your outputs. LoxBridge never sends commands.</small></p></div>
+  <details class="dropdown" style="margin:0"><summary role="button" class="sm">{{ icon("plus") }} Output</summary><ul dir="rtl">
+  {% for t, label in [("influx", "InfluxDB / VictoriaMetrics"), ("mqtt", "MQTT / Home Assistant"), ("prometheus", "Prometheus"), ("webhook", "Webhook")] %}
+  <li><a dir="ltr" href="{{ base }}/sinks/new?type={{ t }}">{{ label }}</a></li>{% endfor %}</ul></details>
+</div>
+{% if not status %}<article class="flash">Live data is off. Turn on <b>Stream live data</b> for a <a href="{{ base }}/miniservers">Miniserver</a>.</article>{% endif %}
 {% set st = {} %}{% for x in sink_status %}{% set _ = st.update({x.id: x}) %}{% endfor %}
-{% for s in sinks %}<tr><td>{% if current and s.id == current.id %}<b>{{ s.name or s.id }}</b>{% else %}<a href="?sink={{ s.id }}&ms={{ ms }}">{{ s.name or s.id }}</a>{% endif %}</td>
-<td>{{ s.type }}</td><td>{{ s.selection|length }} controls</td>
-<td>{% if not s.enabled %}off{% elif st[s.id] and st[s.id].error %}<span class="error">{{ st[s.id].error }}</span>{% elif st[s.id] %}queue {{ st[s.id].queue }}{% endif %}</td>
-<td><a href="{{ base }}/sinks/{{ s.id }}">Settings</a></td></tr>{% endfor %}
-</table>
-<div class="actions">{% for t, label in [("influx", "InfluxDB / VictoriaMetrics"), ("prometheus", "Prometheus"), ("mqtt", "MQTT"), ("webhook", "Webhook")] %}
-<a role="button" class="outline" href="{{ base }}/sinks/new?type={{ t }}">+ {{ label }}</a>{% endfor %}</div>
-</article>
-
-{% if structures %}
-<form method="get" class="grid">
-  <input type="hidden" name="sink" value="{{ current.id if current else '' }}">
-  <select name="ms" onchange="this.form.submit()">{% for m in structures %}<option value="{{ m }}" {% if m == ms %}selected{% endif %}>{{ names.get(m, m) }}{% if status.get(m) %} ({{ "connected" if status[m].connected else "offline" }}){% endif %}</option>{% endfor %}</select>
-</form>
+{% if sinks %}
+<article><div class="list">
+{% for s in sinks %}
+  <div class="row">
+    <div class="grow">{{ dot("off" if not s.enabled else ("err" if st[s.id] and st[s.id].error else "ok")) }}
+      {% if current and s.id == current.id %}<b>{{ s.name or s.id }}</b>{% else %}<a href="?sink={{ s.id }}&ms={{ ms }}"><b>{{ s.name or s.id }}</b></a>{% endif %}
+      <small>{{ s.type }} · {{ s.selection|length }} controls{% if not s.enabled %} · off{% elif st[s.id] and st[s.id].error %} · <span class="error">{{ st[s.id].error }}</span>{% elif st[s.id] and st[s.id].queue %} · {{ st[s.id].queue }} queued{% endif %}</small></div>
+    {% if not current or s.id != current.id %}<a role="button" class="outline secondary sm" href="?sink={{ s.id }}&ms={{ ms }}">Pick controls</a>{% endif %}
+    <a role="button" class="outline secondary sm" href="{{ base }}/sinks/{{ s.id }}">Settings</a>
+  </div>
+{% endfor %}
+</div></article>
+{% else %}
+<article class="muted">No output yet. Add one to send values to InfluxDB, MQTT / Home Assistant, Prometheus or a webhook.</article>
 {% endif %}
 
 {% if current and controls %}
-<h3>Controls exported to “{{ current.name or current.id }}”</h3>
-<div class="grid">
-  <select id="f-room"><option value="">any room</option>{% for r in controls|map(attribute="room")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
-  <select id="f-cat"><option value="">any category</option>{% for r in controls|map(attribute="category")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
-  <select id="f-type"><option value="">any type</option>{% for r in controls|map(attribute="type")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
-  <div class="actions"><button type="button" class="outline" onclick="bulk(true)">Select matching</button><button type="button" class="outline secondary" onclick="bulk(false)">Clear matching</button></div>
+<h2>Controls sent to “{{ current.name or current.id }}”</h2>
+<div class="toolbar">
+  {% if structures|length > 1 %}<form method="get" style="margin:0"><input type="hidden" name="sink" value="{{ current.id }}">
+  <select name="ms" onchange="this.form.submit()" aria-label="Miniserver">{% for m in structures %}<option value="{{ m }}" {% if m == ms %}selected{% endif %}>{{ names.get(m, m) }}</option>{% endfor %}</select></form>{% endif %}
+  <input type="search" id="f-text" placeholder="Search controls" oninput="filter()" aria-label="Search controls">
+  <select id="f-room" onchange="filter()" aria-label="Room"><option value="">All rooms</option>{% for r in controls|map(attribute="room")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
+  <select id="f-cat" onchange="filter()" aria-label="Category"><option value="">All categories</option>{% for r in controls|map(attribute="category")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
+  <select id="f-type" onchange="filter()" aria-label="Type"><option value="">All types</option>{% for r in controls|map(attribute="type")|unique|sort %}<option>{{ r }}</option>{% endfor %}</select>
 </div>
 <form method="post" action="{{ base }}/bridge/selection">
 <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="sink" value="{{ current.id }}"><input type="hidden" name="ms" value="{{ ms }}">
-<div class="scroll"><table>
-<tr><th></th><th>Control</th><th>Room</th><th>Category</th><th>Type</th><th>Values</th></tr>
+<article class="scroll"><table>
+<thead><tr><th><input type="checkbox" id="all" onchange="bulk(this.checked)" aria-label="Select all shown"></th><th>Control</th><th>Room</th><th class="hide-sm">Category</th><th class="hide-sm">Type</th><th class="hide-sm">Value</th></tr></thead><tbody>
 {% for c in controls %}
-<tr class="ctl" data-room="{{ c.room }}" data-cat="{{ c.category }}" data-type="{{ c.type }}">
-<td><input type="checkbox" name="sel" value="{{ c.uuid }}" {% if c.uuid in selected %}checked{% endif %}></td>
-<td>{{ c.name }}</td><td>{{ c.room }}</td><td>{{ c.category }}</td><td>{{ c.type }}</td>
-<td><small>{% for sname, su in c.states.items() %}{% if su in values %}{{ sname }}={{ values[su].value if values[su].value is not none else values[su].text }}{% if c.unit and values[su].value is not none %} {{ c.unit }}{% endif %} {% endif %}{% endfor %}</small></td></tr>
+<tr class="ctl" data-room="{{ c.room }}" data-cat="{{ c.category }}" data-type="{{ c.type }}" data-text="{{ (c.name ~ ' ' ~ c.room)|lower }}">
+<td><input type="checkbox" name="sel" value="{{ c.uuid }}" {% if c.uuid in selected %}checked{% endif %} aria-label="{{ c.name }}"></td>
+<td>{{ c.name }}</td><td>{{ c.room }}</td><td class="hide-sm">{{ c.category }}</td><td class="hide-sm">{{ c.type }}</td>
+<td class="hide-sm"><small>{% for sname, su in c.states.items() %}{% if su in values %}{{ sname }}={{ values[su].value if values[su].value is not none else values[su].text }}{% if c.unit and values[su].value is not none %} {{ c.unit }}{% endif %} {% endif %}{% endfor %}</small></td></tr>
 {% endfor %}
-</table></div>
-<button>Save selection</button>
+</tbody></table></article>
+<div class="form-bar"><div class="actions"><button>Save selection</button><small class="muted" id="count"></small></div></div>
 </form>
-{% elif not structures %}
-<p>No structure loaded yet. Once a Miniserver's bridge connects, its controls appear here.</p>
-{% elif not current %}<p>Add an output first.</p>{% endif %}
+{% elif current and not structures %}
+<article class="muted">Controls appear here once a Miniserver's live data connection is up.</article>
+{% endif %}
 
-<h3>Live values</h3>
-<div hx-get="{{ base }}/bridge/live?ms={{ ms }}" hx-trigger="load, every 2s"></div>
+{% if status %}
+<details class="card" {% if not current %}open{% endif %}><summary>Latest values</summary>
+<div hx-get="{{ base }}/bridge/live?ms={{ ms }}" hx-trigger="load, every 3s [this.closest('details').open], toggle from:closest details"></div>
+</details>
+{% endif %}
 <script>
-function bulk(on) {
-  const r = document.getElementById("f-room").value, c = document.getElementById("f-cat").value, t = document.getElementById("f-type").value;
-  document.querySelectorAll("tr.ctl").forEach(tr => {
-    if ((!r || tr.dataset.room === r) && (!c || tr.dataset.cat === c) && (!t || tr.dataset.type === t))
-      tr.querySelector("input").checked = on;
-  });
+function shown() {
+  const r = document.getElementById("f-room").value, c = document.getElementById("f-cat").value,
+        t = document.getElementById("f-type").value, q = document.getElementById("f-text").value.toLowerCase();
+  return [...document.querySelectorAll("tr.ctl")].filter(tr => (!r || tr.dataset.room === r) &&
+    (!c || tr.dataset.cat === c) && (!t || tr.dataset.type === t) && (!q || tr.dataset.text.includes(q)));
 }
+function count() {
+  const n = document.querySelectorAll("tr.ctl input:checked").length;
+  document.getElementById("count").textContent = n + " selected";
+}
+function filter() {
+  const keep = new Set(shown());
+  document.querySelectorAll("tr.ctl").forEach(tr => tr.hidden = !keep.has(tr));
+  document.getElementById("all").checked = false;
+}
+function bulk(on) { shown().forEach(tr => tr.querySelector("input").checked = on); count(); }
+document.querySelectorAll("tr.ctl input").forEach(i => i.addEventListener("change", count));
+if (document.getElementById("count")) count();
 </script>
 {% endblock %}

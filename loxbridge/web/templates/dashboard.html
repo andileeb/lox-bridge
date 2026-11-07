@@ -1,8 +1,17 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block content %}
-<h2>Dashboard</h2>
-{% if not rows %}<p>No Miniserver yet. <a href="{{ base }}/miniservers/new">Add one</a>.</p>{% endif %}
+{% if not rows %}
+<article class="empty">
+  {{ icon("plug") }}
+  <h2>Connect your Miniserver</h2>
+  <p class="muted">LoxBridge looks for it on your network, logs in and runs the first backup.</p>
+  <a role="button" href="{{ base }}/setup">Get started</a>
+</article>
+{% else %}
+<div class="page-head"><h1>Overview</h1><a role="button" class="outline sm" href="{{ base }}/setup">{{ icon("plus") }} Miniserver</a></div>
 <div hx-get="{{ base }}/partials/dashboard" hx-trigger="every 5s" hx-swap="innerHTML">
 {% include "_dashboard_rows.html" %}
 </div>
+{% endif %}
 {% endblock %}

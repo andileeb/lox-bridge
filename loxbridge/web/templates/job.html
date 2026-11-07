@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 {% from "_macros.html" import status %}
+{% block title %}{{ job.title }}{% endblock %}
 {% block content %}
-<h2>{{ job.title }}</h2>
-<p>Status: <span id="status">{{ status(job.status) }}</span> · started {{ job.started|time }}</p>
-<progress id="bar" {% if job.percent is not none %}value="{{ job.percent }}" max="100"{% endif %}></progress>
-<pre class="log" id="log">{% for m in job.messages %}{{ m }}
-{% endfor %}</pre>
-<div id="summary">{% if job.finished %}<pre>{{ job.summary|tojson(indent=1) }}</pre>{% endif %}</div>
+<div class="page-head"><div><h1>{{ job.title }}</h1><p class="muted">Started {{ job.started|time }}</p></div>
+  <span id="status">{{ status(job.status) }}</span></div>
+<article>
+  <progress id="bar" {% if job.finished %}value="100" max="100"{% elif job.percent is not none %}value="{{ job.percent }}" max="100"{% endif %}></progress>
+  <div id="summary">{% if job.finished %}{% with s = job.summary or {} %}{% include "_job_summary.html" %}{% endwith %}{% endif %}</div>
+  <details {% if not job.finished %}open{% endif %}><summary class="muted"><small>Details</small></summary>
+    <pre class="log" id="log">{% for m in job.messages %}{{ m }}
+{% endfor %}</pre></details>
+</article>
+<div class="actions"><a role="button" class="secondary" href="{{ base }}/">Back to overview</a>
+  {% if job.kind == "backup" %}<a role="button" class="outline secondary" href="{{ base }}/snapshots?ms={{ job.target }}">Snapshots</a>{% endif %}</div>
 {% if not job.finished %}
 <script>
 const log = document.getElementById("log"), bar = document.getElementById("bar");
@@ -14,13 +20,7 @@ log.textContent = "";
 const es = new EventSource("{{ base }}/jobs/{{ job.id }}/stream");
 es.onmessage = e => { const d = JSON.parse(e.data); log.textContent += d.message + "\n"; log.scrollTop = log.scrollHeight;
   if (d.percent != null) { bar.max = 100; bar.value = d.percent; } };
-es.addEventListener("done", e => { es.close(); const d = JSON.parse(e.data);
-  document.getElementById("status").innerHTML = '<span class="badge ' + d.status + '">' + d.status + '</span>';
-  bar.max = 100; bar.value = 100;
-  const pre = document.createElement("pre"); pre.textContent = JSON.stringify(d.summary, null, 1);
-  document.getElementById("summary").appendChild(pre);
-  if (d.summary && d.summary.download) { const a = document.createElement("a"); a.href = "{{ base }}/exports/" + d.summary.download; a.textContent = "Download CSV"; a.role = "button"; document.getElementById("summary").prepend(a); }
-});
+es.addEventListener("done", () => { es.close(); location.reload(); });
 </script>
-{% elif job.summary and job.summary.download %}<a role="button" href="{{ base }}/exports/{{ job.summary.download }}">Download CSV</a>{% endif %}
+{% endif %}
 {% endblock %}

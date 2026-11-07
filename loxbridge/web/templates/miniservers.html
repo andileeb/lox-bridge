@@ -1,12 +1,19 @@
 {% extends "base.html" %}
+{% from "_macros.html" import icon %}
 {% block content %}
-<h2>Miniservers</h2>
-<p><small>Use a <b>backup user</b> with file access (FTP rights) and a separate <b>bridge user</b> with visualisation rights only. Gateway and client Miniservers are added separately.</small></p>
-<table><tr><th>Name</th><th>URL</th><th>Backup</th><th>Bridge</th><th></th></tr>
-{% for m in items %}<tr><td>{{ m.name }}</td><td>{{ m.url }}</td>
-<td>{{ (m.backup_user ~ " (" ~ m.auth_mode ~ ")") if m.backup_enabled else "off" }}</td>
-<td>{{ m.bridge_user if m.bridge_enabled else "off" }}</td>
-<td><a href="{{ base }}/miniservers/{{ m.id }}">Edit</a></td></tr>{% endfor %}
-</table>
-<a href="{{ base }}/miniservers/new" role="button">Add Miniserver</a>
+<div class="page-head"><h1>Miniservers</h1><a role="button" class="sm" href="{{ base }}/setup">{{ icon("plus") }} Add</a></div>
+<article><div class="list">
+{% for m in items %}
+  <div class="row">
+    <div class="grow"><b>{{ m.name }}</b><small>{{ m.url }}</small></div>
+    <span class="chip {{ 'on' if m.backup_enabled and m.backup_user }}">Backup {{ "on" if m.backup_enabled and m.backup_user else "off" }}</span>
+    <span class="chip {{ 'on' if m.bridge_enabled }}">Live data {{ "on" if m.bridge_enabled else "off" }}</span>
+    <a role="button" class="outline secondary sm" href="{{ base }}/miniservers/{{ m.id }}">Edit</a>
+  </div>
+{% else %}
+  <p class="muted">No Miniserver yet. <a href="{{ base }}/setup">Connect one</a>; LoxBridge finds it on your network.</p>
+{% endfor %}
+</div></article>
+<p><small class="muted">Use a user with FTP rights for backups. For live data a plain visualisation user is enough
+  (it only sees the controls that user can see). Gateway and client Miniservers are added one by one.</small></p>
 {% endblock %}

@@ -37,6 +37,26 @@ router = APIRouter(dependencies=[Depends(csrf_guard)], include_in_schema=False)
 DEST_TYPES = {"local": LocalDestination, "s3": S3Destination}
 SINK_TYPES = {"influx": InfluxSink, "prometheus": PrometheusSink, "mqtt": MqttSink, "webhook": WebhookSink}
 SINK_SKIP = {"id", "type", "selection"}
+SINK_NAMES = {"influx": "InfluxDB", "prometheus": "Prometheus", "mqtt": "MQTT", "webhook": "Webhook"}
+# fields shown up front on the edit pages; the rest is folded into "Advanced"
+SECTIONS: dict[type, list[tuple[str, list[str]]]] = {
+    Miniserver: [("Connection", ["name", "url"]),
+                 ("Backup", ["backup_enabled", "backup_user", "backup_password"]),
+                 ("Live data", ["bridge_enabled", "bridge_user", "bridge_password"])],
+    LocalDestination: [("", ["name", "path", "keep", "enabled"])],
+    S3Destination: [("", ["name", "endpoint", "bucket", "access_key", "secret_key", "keep", "mode", "enabled"])],
+    InfluxSink: [("", ["name", "version", "url", "org", "bucket", "token", "enabled"])],
+    PrometheusSink: [("", ["name", "enabled"])],
+    MqttSink: [("", ["name", "host", "port", "username", "password", "ha_discovery", "enabled"])],
+    WebhookSink: [("", ["name", "url", "secret", "enabled"])],
+    Notifications: [("", ["on"]), ("ntfy", ["ntfy_url", "ntfy_token"]), ("Gotify", ["gotify_url", "gotify_token"]),
+                    ("Email", ["smtp_host", "smtp_port", "smtp_starttls", "smtp_user", "smtp_password",
+                               "smtp_from", "smtp_to"]),
+                    ("Webhook and healthchecks", ["webhook_url", "healthcheck_success_url",
+                                                  "healthcheck_fail_url"])],
+}
+SCHEDULES = [("03:00", "Every night at 03:00"), ("00:00, 06:00, 12:00, 18:00", "Every 6 hours"),
+             ("0 3 * * 0", "Weekly, Sunday 03:00")]
 
 
 def _flash(request: Request) -> str | None:
@@ -53,6 +73,10 @@ async def _form(request: Request) -> dict:
 
 def _locked_names(request: Request, path: str) -> set[str]:
     return {p[len(path) + 1:] for p in svc(request).store.locked if p.startswith(path + ".")}
+
+
+def _sections(model, path: str, locked: set[str], skip: set[str] = frozenset()):  # type: ignore[assignment]
+    return forms.sections(forms.fields(model, path, locked, skip), SECTIONS.get(type(model), []))
 
 
 def _save(request: Request, cfg) -> str | None:
@@ -115,13 +139,15 @@ def _dashboard_rows(s) -> list[dict]:
 @router.get("/")
 def dashboard(request: Request):
     s = svc(request)
-    return _page(request, "dashboard.html", rows=_dashboard_rows(s), sinks=s.hub.sink_status())
+    return _page(request, "dashboard.html", rows=_dashboard_rows(s), sinks=s.hub.sink_status(),
+                 destinations=s.cfg.destinations)
 
 
 @router.get("/partials/dashboard")
 def dashboard_partial(request: Request):
     s = svc(request)
-    return render(request, "_dashboard_rows.html", rows=_dashboard_rows(s), sinks=s.hub.sink_status())
+    return render(request, "_dashboard_rows.html", rows=_dashboard_rows(s), sinks=s.hub.sink_status(),
+                  destinations=s.cfg.destinations)
 
 
 # --- Miniservers ----------------------------------------------------------------------------------
@@ -138,15 +164,13 @@ def _ms_index(cfg, ms_id: str) -> int:
 def miniserver_edit(request: Request, ms_id: str):
     cfg = svc(request).cfg
     i = _ms_index(cfg, ms_id)
-    if ms_id != "new" and i < 0:
-        raise HTTPException(404)
-    new_id = f"ms{len(cfg.miniservers) + 1}"
-    m = cfg.miniservers[i] if i >= 0 else Miniserver(id=new_id, name="Miniserver", url="https://192.168.1.77")
-    return _page(request, "edit.html", title=f"Miniserver: {m.name}" if i >= 0 else "Add Miniserver",
-                 fields=forms.fields(m, f"miniservers.{i}", svc(request).store.locked, set() if i < 0 else {"id"}),
-                 action=f"/miniservers/{ms_id}", back="/miniservers", is_new=i < 0,
-                 test_url=f"/miniservers/{ms_id}/test" if i >= 0 else None,
-                 delete_url=f"/miniservers/{ms_id}/delete" if i >= 0 else None)
+    if i < 0:
+        return redirect(request, "/setup")
+    m = cfg.miniservers[i]
+    return _page(request, "edit.html", title=m.name,
+                 sections=_sections(m, f"miniservers.{i}", svc(request).store.locked, {"id"}),
+                 action=f"/miniservers/{ms_id}", back="/miniservers", test_url=f"/miniservers/{ms_id}/test",
+                 delete_url=f"/miniservers/{ms_id}/delete")
 
 
 @router.post("/miniservers/{ms_id}")
@@ -210,6 +234,13 @@ def _test_miniserver(m: Miniserver) -> list[tuple[bool, str]]:
 @router.post("/miniservers/{ms_id}/test")
 async def miniserver_test(request: Request, ms_id: str):
     m = svc(request).cfg.miniserver(ms_id)
+    f = await _form(request)
+    if "url" in f:  # test what's in the form, before saving
+        try:
+            skip = {"id"} | _locked_names(request, f"miniservers.{_ms_index(svc(request).cfg, ms_id)}")
+            m = forms.parse(Miniserver, f, m, skip)  # type: ignore[assignment]
+        except ValidationError as e:
+            return render(request, "_results.html", results=[(False, x) for x in forms.errors(e)])
     results = await asyncio.to_thread(_test_miniserver, m)
     return render(request, "_results.html", results=results)
 
@@ -220,11 +251,86 @@ def miniserver_backup(request: Request, ms_id: str):
     return redirect(request, f"/jobs/{job.id}")
 
 
+# --- setup wizard: find → log in → schedule → first backup ----------------------------------------
+@router.get("/setup")
+def setup_page(request: Request):
+    s = svc(request)
+    return _page(request, "setup.html", schedules=SCHEDULES, schedule=s.cfg.backup.schedule,
+                 locked_schedule="backup.schedule" in s.store.locked,
+                 dest=next((d for d in s.cfg.destinations if d.enabled), None))
+
+
+@router.post("/setup/scan")
+async def setup_scan(request: Request):
+    from ..miniserver import discover
+
+    spec = str((await _form(request)).get("network", "")).strip()
+    host = (request.url.hostname or "").strip("[]")
+    client = request.client.host if request.client else ""
+    nets = [spec] if spec else discover.networks(host, client)
+    try:
+        found = await discover.scan(nets) if nets else []
+    except ValueError as e:
+        return HTMLResponse(f"<p class='error'>{e}</p>")
+    known = {m.url.rstrip("/") for m in svc(request).cfg.miniservers}
+    return render(request, "_found.html", found=found, nets=nets, known=known)
+
+
+def _first_contact(m: Miniserver) -> str:
+    """Log in with the backup user (raises with a readable message) and read the Miniserver's name."""
+    with ms_client(m) as c:
+        c.fslist("/")
+        try:
+            return json.loads(c.get("data/LoxAPP3.json"))["msInfo"].get("msName") or "Miniserver"
+        except Exception:  # noqa: BLE001 - the name is a nicety
+            return "Miniserver"
+
+
+@router.post("/setup")
+async def setup_save(request: Request):
+    f = await _form(request)
+    s = svc(request)
+    url = str(f.get("url", "")).strip().rstrip("/")
+    if url and "://" not in url:
+        url = "https://" + url
+    user, pw, live = str(f.get("user", "")).strip(), str(f.get("password", "")), "live" in f
+    cfg = s.cfg.model_copy(deep=True)
+    taken = {m.id for m in cfg.miniservers}
+    ms_id = next(f"ms{n}" for n in range(1, 1000) if f"ms{n}" not in taken)
+    try:
+        m = Miniserver(id=ms_id, name="Miniserver", url=url, backup_user=user, backup_password=pw,  # type: ignore[arg-type]
+                       bridge_enabled=live, bridge_user=user if live else "",
+                       bridge_password=pw if live else "")  # type: ignore[arg-type]
+        if not user:
+            raise ValueError("enter the Loxone user name")
+        m.name = await asyncio.to_thread(_first_contact, m)
+    except ValidationError:
+        return render(request, "_results.html", results=[(False, "Address must look like https://192.168.1.77")])
+    except Exception as e:  # noqa: BLE001
+        return render(request, "_results.html", results=[(False, f"Could not log in: {e or type(e).__name__}")])
+    cfg.miniservers.append(m)
+    if f.get("schedule") and "backup.schedule" not in s.store.locked:
+        cfg.backup.schedule = str(f["schedule"])
+    if not any(d.enabled for d in cfg.destinations):  # a backup needs somewhere to go: the /backups folder
+        local = next((d for d in cfg.destinations if d.type == "local"), None)
+        if local:
+            local.enabled = True
+        else:
+            cfg.destinations.append(LocalDestination(id="local"))
+    if err := _save(request, cfg):
+        return render(request, "_results.html", results=[(False, err)])
+    job = s.start_backup(ms_id)
+    request.session["flash"] = f"{m.name} connected. The first backup is running."
+    return HTMLResponse("", headers={"HX-Redirect": f"{request.scope.get('root_path', '')}/jobs/{job.id}"})
+
+
 # --- backup settings ------------------------------------------------------------------------------
 @router.get("/backup")
 def backup_page(request: Request):
     s = svc(request)
-    return _page(request, "backup.html", fields=forms.fields(s.cfg.backup, "backup", s.store.locked),
+    fields = forms.fields(s.cfg.backup, "backup", s.store.locked)
+    return _page(request, "backup.html", fields={f["name"]: f for f in fields},
+                 schedules=SCHEDULES,
                  miniservers=s.cfg.miniservers,
                  influx=[x for x in s.cfg.sinks if x.type == "influx"],
                  next={m.id: s.scheduler.next_backup(m.id) for m in s.cfg.miniservers})
@@ -279,12 +385,12 @@ def destination_edit(request: Request, dest_id: str, type: str = "s3", preset: s
         d = DEST_TYPES[type](id=new_id, **S3_PRESETS.get(preset, {}))  # type: ignore[arg-type]
     else:
         raise HTTPException(404)
-    return _page(request, "edit.html", title=f"Destination: {d.name}" if i >= 0 else f"Add {type} destination",
-                 fields=forms.fields(d, f"destinations.{i}", s.store.locked, {"type"} | ({"id"} if i >= 0 else set())),
+    title = d.name if i >= 0 else ("Add local folder" if type == "local" else "Add S3")
+    return _page(request, "edit.html", title=title,
+                 sections=_sections(d, f"destinations.{i}", s.store.locked, {"type"} | ({"id"} if i >= 0 else set())),
                  action=f"/destinations/{dest_id}?type={d.type}", back="/destinations", is_new=i < 0,
-                 test_url=f"/destinations/{dest_id}/test" if i >= 0 else None,
-                 delete_url=f"/destinations/{dest_id}/delete" if i >= 0 else None,
-                 note="Restore, verify and GC are on the Snapshots page." if i >= 0 else None)
+                 test_url=f"/destinations/{dest_id}/test?type={d.type}",
+                 delete_url=f"/destinations/{dest_id}/delete" if i >= 0 else None)
 
 
 @router.post("/destinations/{dest_id}")
@@ -317,12 +423,26 @@ def destination_delete(request: Request, dest_id: str):
 
 
 @router.post("/destinations/{dest_id}/test")
-async def destination_test(request: Request, dest_id: str):
+async def destination_test(request: Request, dest_id: str, type: str = "s3"):
+    from ..backup.runner import make_store
+
+    s = svc(request)
+    f = await _form(request)
     try:
-        msg = await asyncio.to_thread(lambda: svc(request).store_for(dest_id).test())
+        if "name" in f:  # test what's in the form, before saving
+            i = _dest_index(s.cfg, dest_id)
+            existing = s.cfg.destinations[i] if i >= 0 else None
+            d = forms.parse(DEST_TYPES[existing.type if existing else type], f, existing,
+                            {"type"} | ({"id"} if existing else set()))
+            target = make_store(d, s.work)  # type: ignore[arg-type]
+        else:
+            target = s.store_for(dest_id)
+        msg = await asyncio.to_thread(target.test)
         results = [(True, msg)]
+    except ValidationError as e:
+        results = [(False, x) for x in forms.errors(e)]
     except Exception as e:  # noqa: BLE001
-        results = [(False, str(e) or type(e).__name__)]
+        results = [(False, str(e) or e.__class__.__name__)]
     return render(request, "_results.html", results=results)
 
 
@@ -440,16 +560,16 @@ def sink_edit(request: Request, sink_id: str, type: str = "influx"):
     if i >= 0:
         sk = s.cfg.sinks[i]
     elif sink_id == "new" and type in SINK_TYPES:
-        sk = SINK_TYPES[type](id=f"{type}{len(s.cfg.sinks) + 1}", name=type.capitalize())
+        sk = SINK_TYPES[type](id=f"{type}{len(s.cfg.sinks) + 1}", name=SINK_NAMES[type])
     else:
         raise HTTPException(404)
     skip = SINK_SKIP - ({"id"} if i < 0 else set())
-    return _page(request, "edit.html", title=f"Output: {sk.name or sk.id}" if i >= 0 else f"Add {type} output",
-                 fields=forms.fields(sk, f"sinks.{i}", s.store.locked, skip),
+    return _page(request, "edit.html", title=(sk.name or sk.id) if i >= 0 else f"Add {sk.name} output",
+                 sections=_sections(sk, f"sinks.{i}", s.store.locked, skip),
                  action=f"/sinks/{sink_id}?type={sk.type}", back="/bridge", is_new=i < 0,
-                 test_url=f"/sinks/{sink_id}/test" if i >= 0 else None,
+                 test_url=f"/sinks/{sink_id}/test?type={sk.type}",
                  delete_url=f"/sinks/{sink_id}/delete" if i >= 0 else None,
-                 note="Choose which controls this output exports on the Bridge page.")
+                 note="After saving, tick the controls this output exports on the Live data page.")
 
 
 @router.post("/sinks/{sink_id}")
@@ -482,10 +602,24 @@ def sink_delete(request: Request, sink_id: str):
 
 
 @router.post("/sinks/{sink_id}/test")
-async def sink_test(request: Request, sink_id: str):
+async def sink_test(request: Request, sink_id: str, type: str = "influx"):
     from ..bridge.hub import make_sink
 
-    sk = make_sink(svc(request).cfg.sink(sink_id))
+    s = svc(request)
+    f = await _form(request)
+    i = _sink_index(s.cfg, sink_id)
+    existing = s.cfg.sinks[i] if i >= 0 else None
+    if "name" in f:  # test what's in the form, before saving
+        try:
+            model = forms.parse(SINK_TYPES[existing.type if existing else type], f, existing,
+                                SINK_SKIP - ({"id"} if i < 0 else set()))
+        except ValidationError as e:
+            return render(request, "_results.html", results=[(False, x) for x in forms.errors(e)])
+    elif existing:
+        model = existing
+    else:
+        raise HTTPException(404)
+    sk = make_sink(model)  # type: ignore[arg-type]
     try:
         results = [(True, await asyncio.wait_for(sk.test(), 15))]
     except Exception as e:  # noqa: BLE001
@@ -542,7 +676,7 @@ def export_download(request: Request, name: str):
 def notifications(request: Request):
     s = svc(request)
     return _page(request, "edit.html", title="Notifications",
-                 fields=forms.fields(s.cfg.notifications, "notifications", s.store.locked),
+                 sections=_sections(s.cfg.notifications, "notifications", s.store.locked),
                  action="/notifications", back=None, test_url="/notifications/test",
                  note="Healthcheck URLs are pinged after every backup (success or fail URL). The other channels "
                       "fire on failures, or always if 'On' is set to always.")
@@ -563,7 +697,14 @@ async def notifications_save(request: Request):
 async def notifications_test(request: Request):
     from ..notify import notify
 
-    n = svc(request).cfg.notifications.model_copy(update={"on": "always"})
+    n = svc(request).cfg.notifications
+    f = await _form(request)
+    if "on" in f:  # test what's in the form, before saving
+        try:
+            n = forms.parse(Notifications, f, n, _locked_names(request, "notifications"))  # type: ignore[assignment]
+        except ValidationError as e:
+            return render(request, "_results.html", results=[(False, x) for x in forms.errors(e)])
+    n = n.model_copy(update={"on": "always"})
     errs = await asyncio.to_thread(notify, n, False, "LoxBridge test", "This is a test notification.")
     return render(request, "_results.html", results=[(False, e) for e in errs] or [(True, "sent")])
 

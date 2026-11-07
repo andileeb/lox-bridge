@@ -1,5 +1,6 @@
 """Synchronous Miniserver HTTP client: /dev/fslist, /dev/fsget, jdev commands."""
 
+import hashlib
 import json
 import logging
 import time
@@ -83,7 +84,8 @@ class MiniserverHTTP:
         return ll
 
     def _token(self, force: bool = False) -> auth.Token:
-        key = (self.base, self.user)
+        # the password is part of the key: a changed password (or a Test with a wrong one) must not reuse a token
+        key = (self.base, self.user, hashlib.sha256(self.password.encode()).hexdigest())
         tok = auth.TOKENS.get(key)
         if tok and not force and tok.valid_until - time.time() > auth.REFRESH_BEFORE:
             return tok

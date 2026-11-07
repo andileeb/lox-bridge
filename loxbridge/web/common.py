@@ -36,7 +36,46 @@ def _fmt_size(n: float | None) -> str:
     return ""
 
 
+def _ago(ts: float | None) -> str:
+    if not ts:
+        return "never"
+    d = time.time() - ts
+    for limit, div, unit in ((60, 1, "s"), (3600, 60, "min"), (86400, 3600, "h")):
+        if d < limit:
+            return "just now" if d < 10 else f"{int(d // div)} {unit} ago"
+    return f"{int(d // 86400)} d ago"
+
+
+def _when(dt: datetime | None) -> str:
+    if not dt:
+        return "not scheduled"
+    days = (dt.date() - datetime.now(dt.tzinfo).date()).days
+    day = {0: "today", 1: "tomorrow"}.get(days) or dt.strftime("%a %d %b")
+    return f"{day} {dt:%H:%M}"
+
+
+# (href, label, icon, sub-tabs, path prefixes that belong to the section)
+NAV = [
+    ("/", "Overview", "home", [], ("/jobs",)),
+    ("/snapshots", "Backups", "archive",
+     [("/snapshots", "Snapshots"), ("/backup", "Schedule"), ("/destinations", "Destinations"),
+      ("/history", "History import")], ("/snapshots", "/backup", "/destinations", "/history", "/exports")),
+    ("/bridge", "Live data", "activity", [], ("/bridge", "/sinks")),
+    ("/miniservers", "Miniservers", "server", [], ("/miniservers", "/setup")),
+    ("/settings", "Settings", "settings", [("/settings", "General"), ("/notifications", "Notifications"),
+                                           ("/logs", "Logs")], ("/settings", "/notifications", "/logs")),
+]
+
+
+def _section(rel: str):
+    if rel == "/":
+        return NAV[0]
+    return next((n for n in NAV if any(rel == p or rel.startswith(p + "/") for p in n[4])), None)
+
+
 templates.env.filters["time"] = _fmt_time
+templates.env.filters["ago"] = _ago
+templates.env.filters["when"] = _when
 templates.env.filters["size"] = _fmt_size
 templates.env.globals["version"] = __version__
 
@@ -53,7 +92,12 @@ def csrf_token(request: Request) -> str:
 
 def render(request: Request, name: str, **ctx) -> object:
     s = svc(request)
+    root = request.scope.get("root_path", "")
+    rel = request.url.path[len(root):] or "/"
     return templates.TemplateResponse(request, name, {
+        "nav": NAV,
+        "section": _section(rel),
+        "rel": rel,
         "base": request.scope.get("root_path", ""),
         "csrf": csrf_token(request),
         "user": getattr(request.state, "user", None),

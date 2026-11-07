@@ -1,0 +1,18 @@
+{% if found %}
+<div class="choices">{% for f in found %}
+  <button type="button" class="choice" data-url="{{ f.url }}" {% if f.url not in known %}data-new{% endif %} onclick="pick(this)">
+    <b>Miniserver {{ f.serial }}</b><small>{{ f.host }} · firmware {{ f.firmware }}</small>
+    {% if f.url in known %}<span class="chip">already added</span>{% endif %}</button>
+{% endfor %}</div>
+{% else %}
+<p class="muted">No Miniserver answered in {{ nets|join(", ") or "your network" }}. Enter its address below, or search another network.</p>
+{% endif %}
+<details {% if not found %}open{% endif %}>
+  <summary class="muted"><small>Search another network{% if nets %} (searched {{ nets|join(", ") }}){% endif %}</small></summary>
+  <div role="group">
+    <input name="network" placeholder="192.168.3.0/24 or 192.168.3.140" onkeydown="if (event.key === 'Enter') { event.preventDefault(); this.nextElementSibling.click(); }" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button type="button" class="secondary" hx-post="{{ base }}/setup/scan" hx-params="network" hx-target="#found"
+            hx-indicator="#scan-busy">Search</button>
+  </div>
+  <small id="scan-busy" class="htmx-indicator" aria-busy="true">Searching…</small>
+</details>

@@ -1,6 +1,6 @@
-<div class="scroll"><table><tr><th>Control</th><th>State</th><th>Room</th><th>Value</th><th>Changed</th></tr>
-{% for r in rows %}<tr><td>{{ r.control }}</td><td>{{ r.state }}</td><td>{{ r.room }}</td>
-<td>{{ r.value if r.value is not none else r.text }}{% if r.unit and r.value is not none %} {{ r.unit }}{% endif %}</td>
-<td><small>{{ (now - r.ts)|round|int }} s ago</small></td></tr>
-{% else %}<tr><td colspan="5">No values yet.</td></tr>{% endfor %}
-</table></div>
+<article class="scroll"><table><thead><tr><th>Control</th><th class="hide-sm">State</th><th class="hide-sm">Room</th><th class="num">Value</th><th class="num">Changed</th></tr></thead><tbody>
+{% for r in rows %}<tr><td>{{ r.control }}</td><td class="hide-sm">{{ r.state }}</td><td class="hide-sm">{{ r.room }}</td>
+<td class="num">{{ r.value if r.value is not none else r.text }}{% if r.unit and r.value is not none %} {{ r.unit }}{% endif %}</td>
+<td class="num"><small>{{ r.ts|ago }}</small></td></tr>
+{% else %}<tr><td colspan="5" class="muted">No values yet.</td></tr>{% endfor %}
+</tbody></table></article>

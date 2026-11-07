@@ -1,1 +1,1 @@
-<ul>{% for ok, msg in results %}<li class="{{ 'ok' if ok else 'error' }}">{{ '✔' if ok else '✘' }} {{ msg }}</li>{% endfor %}</ul>
+<ul class="results">{% for ok, msg in results %}<li class="{{ 'ok' if ok else 'error' }}">{{ '✔' if ok else '✘' }} {{ msg }}</li>{% endfor %}</ul>

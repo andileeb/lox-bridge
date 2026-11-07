@@ -20,6 +20,7 @@ uv run python tests/mock_ms.py --port 8443 --extra-controls 50   # fake Miniserv
 docker compose -f compose.dev.yaml up -d --build   # app :8080 (admin/devpassword1), mock, s3mock, mosquitto,
                                                    # influxdb, prometheus, grafana :3000
 E2E_BASE_URL=http://localhost:8080 uv run pytest tests/e2e   # Playwright; `uv run playwright install chromium`
+# needs an empty dev-data (it starts with the setup wizard); E2E_SCREENSHOTS=DIR saves phone/tablet/desktop shots
 ```
 
 The dev stack bind-mounts `./dev-data` (runs as root there). Deleting `dev-data` while the container runs kills it →
@@ -51,9 +52,12 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
 - `bridge/` — `hub.py` (state cache, per-sink selection/deadband/heartbeat, owns the `MiniserverWS` tasks),
   `sinks/` (one class per output, each with its own bounded deque + batching loop in `base.py`), `history.py`.
 - `jobs/` — `manager.py` (jobs run in threads, progress polled by SSE), `scheduler.py` (APScheduler 3).
-- `web/` — `common.py` (auth middleware, CSRF dependency, templates, streaming ZIP), `forms.py` (generic
-  pydantic ↔ form fields: one edit page renders every model), `routes_ui.py`, `routes_api.py` (`/api/v1`,
-  `/metrics`). Jinja2 + HTMX + Pico.css vendored in `web/static/` — no JS build step.
+- `web/` — `common.py` (auth middleware, CSRF dependency, templates, `NAV` = sections + sub-tabs, streaming ZIP),
+  `forms.py` (generic pydantic ↔ form fields + `LABELS`; one edit page renders every model), `routes_ui.py`
+  (`SECTIONS` picks the fields shown up front per model, the rest folds into "Advanced"; `/setup` wizard),
+  `routes_api.py` (`/api/v1`, `/metrics`). Jinja2 + HTMX + Pico.css vendored in `web/static/`, `app.css` on top
+  (mobile first: bottom tab bar < 768 px) — no JS build step.
+- `miniserver/discover.py` — LAN scan for the setup wizard (`jdev/cfg/apiKey` on /24 networks).
 - `cli.py` — `serve` (default), `once`, `list`, `restore`, `verify`, `gc`, `check [--dump DIR]`, `reset-admin`.
 
 ## Domain knowledge (hard-won, don't rediscover)
@@ -84,6 +88,11 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
 - S3 dedup keeps a local blob index in `/work/s3index/<dest>_<ms>.txt` to avoid HEAD requests. It's rebuilt from one
   listing if `latest.json` is missing. GC only deletes unreferenced blobs older than 24 h.
 - Snapshots are invisible until complete: local `.inprogress_*` → rename; S3 manifest + `latest.json` last.
+- **Discovery**: `jdev/cfg/apiKey` answers without login (`{'snr': '50:4F:94:..', 'version': '17.3.10.27', ...}`,
+  measured). UDP search / mDNS don't cross the Docker bridge, HTTPS probes do. Scan the /24 of the Host header *and*
+  of the client IP: on the dev's LAN the NAS (192.168.2.x) and the Miniserver (192.168.3.x) are in different VLANs.
+- The HTTP token cache key includes a hash of the password, otherwise a Test with a wrong password passes on the
+  cached token.
 - httpx/httpcore loggers are forced to WARNING (`logs.py`): at INFO they log request URLs, which carry `autht`.
 
 ## Known bugs / open items
@@ -106,6 +115,10 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
   checks snapshot names. Keep those guards.
 - Jobs and config listeners can fire from worker threads (sync FastAPI endpoints, APScheduler executors). Use
   `JobManager.spawn()` to get onto the app loop, never `asyncio.get_running_loop()` there.
+- HTMX attributes inherit: an `hx-post` element inside a form with `hx-target` swaps into the form's target. The
+  setup form uses `hx-disinherit="*"`.
+- Test buttons post the unsaved form (`hx-post` inside the form) and the test routes `forms.parse` it; without form
+  fields they fall back to the saved config (list pages).
 - UI POSTs need the CSRF token (form field `csrf` or `X-CSRF-Token`; HTMX sends it from `<body hx-headers>`).
   Bearer-token API calls are exempt.
 - Locked (env-overridden) form fields are disabled → not submitted → pass their names in `skip` to `forms.parse`,

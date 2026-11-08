@@ -1,6 +1,6 @@
 [project]
 name = "loxbridge"
-version = "0.1.4"
+version = "0.1.5"
 description = "Loxone Miniserver backup and read-only data bridge"
 requires-python = ">=3.13"
 license = "MIT"

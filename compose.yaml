@@ -4,7 +4,7 @@
 # it and put its path on the /backups line.
 services:
   loxbridge:
-    image: ghcr.io/andileeb/loxbridge:0.1.4
+    image: ghcr.io/andileeb/loxbridge:0.1.5
     restart: unless-stopped
     ports:
       - "18568:8080"   # NAS port : container port; change only the left side if 18568 is taken

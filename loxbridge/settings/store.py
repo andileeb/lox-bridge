@@ -173,16 +173,21 @@ class Store:
         return self.config
 
     # --- users / tokens ---------------------------------------------------------------------------
-    def user_hash(self, username: str) -> str | None:
-        row = self.db.execute("SELECT password_hash FROM users WHERE username = ?", (username,)).fetchone()
+    # one admin account, no user name: the row's username is always "admin"
+    def password_hash(self) -> str | None:
+        row = self.db.execute("SELECT password_hash FROM users").fetchone()
         return row["password_hash"] if row else None
 
-    def set_user(self, username: str, password_hash: str) -> None:
+    def set_password(self, password_hash: str, only_if_unset: bool = False) -> bool:
+        """False if only_if_unset and a password exists (first-run registration racing another request)."""
         with self.lock:
-            self.db.execute("DELETE FROM users")  # single admin account
-            self.db.execute("INSERT INTO users VALUES (?, ?)", (username, password_hash))
+            if only_if_unset and self.has_password():
+                return False
+            self.db.execute("DELETE FROM users")
+            self.db.execute("INSERT INTO users VALUES ('admin', ?)", (password_hash,))
+            return True
 
-    def has_user(self) -> bool:
+    def has_password(self) -> bool:
         return self.db.execute("SELECT 1 FROM users").fetchone() is not None
 
     def create_token(self, name: str) -> str:

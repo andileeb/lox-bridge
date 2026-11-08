@@ -88,9 +88,16 @@ def _save(request: Request, cfg) -> str | None:
 
 
 # --- auth -----------------------------------------------------------------------------------------
+def _next(f) -> str:
+    nxt = f.get("next", "/")
+    return nxt if nxt.startswith("/") and not nxt.startswith("//") else "/"
+
+
 @router.get("/login")
 def login_page(request: Request, next: str = "/"):
-    return _page(request, "login.html", next=next, no_user=not svc(request).store.has_user())
+    if not svc(request).store.has_password():
+        return redirect(request, "/register")
+    return _page(request, "login.html", next=next)
 
 
 @router.post("/login")
@@ -98,22 +105,42 @@ async def login(request: Request):
     f = await _form(request)
     ip = request.client.host if request.client else ""
     s = svc(request)
-    nxt = f.get("next", "/")
-    if not nxt.startswith("/") or nxt.startswith("//"):
-        nxt = "/"
+    nxt = _next(f)
     if LIMITER.blocked(ip):
         return _page(request, "login.html", next=nxt, error="Too many failed logins, try again in 5 minutes.")
-    h = s.store.user_hash(f.get("username", ""))
+    h = s.store.password_hash()
     try:
         if not h:
             raise VerifyMismatchError
         HASHER.verify(h, f.get("password", ""))
     except VerifyMismatchError:
         LIMITER.fail(ip)
-        return _page(request, "login.html", next=nxt, error="Wrong user name or password.")
+        return _page(request, "login.html", next=nxt, error="Wrong password.")
     request.session.clear()
-    request.session["user"] = f["username"]
+    request.session["user"] = "admin"
     return redirect(request, nxt)
+
+
+# First visit: whoever opens the app first sets the password (like Grafana, Portainer, Home Assistant).
+@router.get("/register")
+def register_page(request: Request):
+    if svc(request).store.has_password():
+        return redirect(request, "/login")
+    return _page(request, "login.html", register=True)
+
+
+@router.post("/register")
+async def register(request: Request):
+    f = await _form(request)
+    s = svc(request)
+    pw = f.get("password", "")
+    if len(pw) < 8 or pw != f.get("repeat"):
+        return _page(request, "login.html", register=True, error="Passwords must match and have at least 8 characters.")
+    if not s.store.set_password(HASHER.hash(pw), only_if_unset=True):
+        return redirect(request, "/login")
+    request.session.clear()
+    request.session["user"] = "admin"
+    return redirect(request, "/")
 
 
 @router.post("/logout")
@@ -783,7 +810,7 @@ def settings(request: Request):
 async def settings_password(request: Request):
     f = await _form(request)
     s = svc(request)
-    h = s.store.user_hash(request.session.get("user", ""))
+    h = s.store.password_hash()
     try:
         if not h:
             raise VerifyMismatchError
@@ -792,7 +819,7 @@ async def settings_password(request: Request):
         return redirect(request, "/settings", "Error: current password is wrong")
     if len(f.get("new", "")) < 8 or f.get("new") != f.get("repeat"):
         return redirect(request, "/settings", "Error: new passwords must match and have at least 8 characters")
-    s.store.set_user(request.session["user"], HASHER.hash(f["new"]))
+    s.store.set_password(HASHER.hash(f["new"]))
     return redirect(request, "/settings", "Password changed.")
 
 

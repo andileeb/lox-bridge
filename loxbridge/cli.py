@@ -95,8 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dest")
     p = sub.add_parser("check", help="test Miniserver and destination connections")
     p.add_argument("--dump", type=Path, help="save raw Miniserver answers here (for test fixtures)")
-    p = sub.add_parser("reset-admin", help="set the admin user and password")
-    p.add_argument("--user", default="admin")
+    p = sub.add_parser("reset-admin", help="set a new admin password")
     p.add_argument("--password")
     a = ap.parse_args(argv)
     logs.setup(os.environ.get("LOG_LEVEL", "INFO"))
@@ -121,8 +120,8 @@ def main(argv: list[str] | None = None) -> int:
         if len(pw) < 8:
             print("password must have at least 8 characters", file=sys.stderr)
             return 2
-        store.set_user(a.user, HASHER.hash(pw))
-        print(f"admin account '{a.user}' set")
+        store.set_password(HASHER.hash(pw))
+        print("admin password set")
         return 0
 
     if a.cmd == "once":

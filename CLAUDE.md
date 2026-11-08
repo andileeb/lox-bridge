@@ -14,13 +14,13 @@ uv sync -p 3.13                     # venv + deps (uv.lock is committed; CI uses
 uv run pytest -q                    # ~90 s: unit, moto S3, TLS mock Miniserver (HTTPS + WSS), web
 uv run ruff check loxbridge tests   # line length 120
 uv run mypy loxbridge/settings loxbridge/backup loxbridge/miniserver loxbridge/bridge
-uv run python -m loxbridge serve    # needs CONFIG_DIR / WORK_DIR (default /config, /work) and ADMIN_PASSWORD
+uv run python -m loxbridge serve    # needs CONFIG_DIR / WORK_DIR (default /config, /work)
 uv run python tests/mock_ms.py --port 8443 --extra-controls 50   # fake Miniserver (admin:secret)
 
-docker compose -f compose.dev.yaml up -d --build   # app :8080 (admin/devpassword1), mock, s3mock, mosquitto,
+docker compose -f compose.dev.yaml up -d --build   # app :8080 (E2E sets password devpassword1), mock, s3mock, mosquitto,
                                                    # influxdb, prometheus, grafana :3000
 E2E_BASE_URL=http://localhost:8080 uv run pytest tests/e2e   # Playwright; `uv run playwright install chromium`
-# needs an empty dev-data (it starts with the setup wizard); E2E_SCREENSHOTS=DIR saves phone/tablet/desktop shots
+# needs an empty dev-data (it starts with the password screen + setup wizard); E2E_SCREENSHOTS=DIR saves phone/tablet/desktop shots
 ```
 
 The dev stack bind-mounts `./dev-data` (runs as root there). Deleting `dev-data` while the container runs kills it →
@@ -119,6 +119,8 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
   setup form uses `hx-disinherit="*"`.
 - Test buttons post the unsaved form (`hx-post` inside the form) and the test routes `forms.parse` it; without form
   fields they fall back to the saved config (list pages).
+- One account, password only: the first visit to the UI sets it (`/register`, closed once a password exists).
+  `ADMIN_PASSWORD` only presets it when none is set; `reset-admin` overwrites it.
 - UI POSTs need the CSRF token (form field `csrf` or `X-CSRF-Token`; HTMX sends it from `<body hx-headers>`).
   Bearer-token API calls are exempt.
 - Locked (env-overridden) form fields are disabled → not submitted → pass their names in `skip` to `forms.parse`,

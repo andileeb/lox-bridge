@@ -19,7 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .. import __version__
 
-PUBLIC = ("/login", "/static/", "/api/v1/health", "/metrics")
+PUBLIC = ("/login", "/register", "/static/", "/api/v1/health", "/metrics")
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
@@ -170,7 +170,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         if rel.startswith("/api/"):
             return JSONResponse({"detail": "authentication required"}, status_code=401)
-        return RedirectResponse(f"{root}/login?next={rel}", status_code=303)
+        return RedirectResponse(f"{root}/login?next={rel}" if s.store.has_password() else f"{root}/register",
+                                status_code=303)
 
 
 def zip_stream(files: Iterator[tuple[str, object]]) -> Iterator[bytes]:

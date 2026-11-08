@@ -46,8 +46,10 @@ def test_ui_flow(tmp_path):
     with sync_playwright() as p:
         b = p.chromium.launch()
         page = b.new_page(accept_downloads=True)
-        page.goto(f"{BASE}/")
+        page.goto(f"{BASE}/")  # fresh dev-data: first visit sets the password
+        expect(page.get_by_role("button", name="Set password")).to_be_visible()
         page.fill("input[name=password]", "devpassword1")
+        page.fill("input[name=repeat]", "devpassword1")
         page.click("button[type=submit]")
 
         # setup wizard: empty overview → find the mock by name → log in → first backup

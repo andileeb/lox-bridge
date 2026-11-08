@@ -15,13 +15,14 @@ to backfill Grafana with the time before the proxy ran.
 ## Install on TrueNAS
 
 1. Apps → Discover Apps → ⋮ → **Install via YAML**, paste [`compose.yaml`](compose.yaml), replace `tank` with your
-   pool name, set `TZ` and `ADMIN_PASSWORD`. No datasets or permissions to prepare: the container creates
+   pool name and set `TZ`. No datasets or permissions to prepare: the container creates
    `config`, `work` and `backups` under `/mnt/<pool>/apps/loxbridge/` on first start and hands them to the `apps`
    user (568, override with `PUID`/`PGID`), then runs as that user.
 2. Optional: want the backups in their own dataset (own snapshot schedule or quota)? Create it, e.g.
    `tank/backups/loxone`, and put its path on the `/backups` line. Permissions are fixed automatically.
-3. Open `http://<truenas>:18568` (or the **Web UI** button in the apps list), log in as `admin` with that password. `ADMIN_PASSWORD` is applied on every start, so to
-   change the password edit it in the app YAML (or remove the line and change it under *Settings*).
+3. Open `http://<truenas>:18568` (or the **Web UI** button in the apps list), and choose a password: the first visit
+   sets it (there is only one account, no user name). Change it later under *Settings*; forgot it? Run
+   `loxbridge reset-admin` in the app's shell.
    Then **Get started**: LoxBridge searches your network for the Miniserver, you enter a Loxone user and pick a
    schedule, and the first backup runs right away.
 4. **Back up `/config/secret.key`** (or set `SECRET_KEY`). Without it the stored passwords can't be decrypted.
@@ -31,7 +32,7 @@ of them cost almost nothing, and they protect against deletion by the app itself
 
 | Env var | Purpose |
 |---|---|
-| `ADMIN_USER`, `ADMIN_PASSWORD` | admin account, applied on every start |
+| `ADMIN_PASSWORD` | optional: preset the password instead of choosing it on the first visit |
 | `SECRET_KEY` / `SECRET_KEY_FILE` | key for secret encryption (default: generated `/config/secret.key`) |
 | `TZ` | time zone for schedules and statistics timestamps |
 | `PORT`, `BASE_URL` | listen port; path prefix when running behind a reverse proxy subpath |

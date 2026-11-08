@@ -42,7 +42,7 @@ def test_auth_required(client):
     r = client.get("/", follow_redirects=False)
     assert r.status_code == 303 and "/login" in r.headers["location"]
     bad = client.post("/login", data={"username": "admin", "password": "nope", "csrf": csrf(client, "/login")})
-    assert "Wrong user name" in bad.text
+    assert "Wrong password" in bad.text
     assert client.post("/login", data={"username": "admin", "password": "x"}).status_code == 403  # no CSRF
 
 
@@ -96,15 +96,25 @@ def test_api_token(client):
     assert anon.get("/api/v1/states", headers={"Authorization": "Bearer lxb_wrong"}).status_code == 401
 
 
-def test_admin_password_env_wins_on_restart(tmp_path, monkeypatch):
-    """First start with one password, restart with another: the new ADMIN_PASSWORD must work."""
+def test_register_on_first_visit(tmp_path, monkeypatch):
+    """No ADMIN_PASSWORD: the first visitor sets the password, after that /register is closed."""
+    monkeypatch.delenv("ADMIN_PASSWORD", raising=False)
     monkeypatch.delenv("SECRET_KEY", raising=False)
-    for pw in ("firstpass1", "secondpass2"):
-        monkeypatch.setenv("ADMIN_PASSWORD", pw)
-        with TestClient(create_app(tmp_path / "config", tmp_path / "work")) as c:
-            r = c.post("/login", data={"username": "admin", "password": pw, "csrf": csrf(c, "/login")},
-                       follow_redirects=False)
-            assert r.status_code == 303, pw
+    with TestClient(create_app(tmp_path / "config", tmp_path / "work")) as c:
+        assert c.get("/", follow_redirects=False).headers["location"].endswith("/register")
+        assert c.get("/login", follow_redirects=False).headers["location"].endswith("/register")
+        t = csrf(c, "/register")
+        assert "at least 8" in c.post("/register", data={"csrf": t, "password": "short", "repeat": "short"}).text
+        r = c.post("/register", data={"csrf": t, "password": "firstpass1", "repeat": "firstpass1"},
+                   follow_redirects=False)
+        assert r.status_code == 303 and c.get("/").status_code == 200  # logged in right away
+        c.post("/logout", data={"csrf": csrf(c)})
+        r = c.post("/register", data={"csrf": csrf(c, "/login"), "password": "hijack123", "repeat": "hijack123"},
+                   follow_redirects=False)
+        assert r.headers["location"].endswith("/login")
+        assert "Wrong password" in c.post("/login", data={"csrf": csrf(c, "/login"), "password": "hijack123"}).text
+        r = c.post("/login", data={"csrf": csrf(c, "/login"), "password": "firstpass1"}, follow_redirects=False)
+        assert r.status_code == 303
 
 
 def test_setup_wizard(client, mock_ms, tmp_path):

@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 {% from "_macros.html" import logo %}
-{% block title %}Log in{% endblock %}
+{% block title %}{{ "Set a password" if register else "Log in" }}{% endblock %}
 {% block content %}
 <article class="login">
   <div class="brand">{{ logo() }}<span>LoxBridge</span></div>
-  {% if no_user %}<p class="warn">No admin account yet. Set <code>ADMIN_PASSWORD</code> in the app settings and restart.</p>{% endif %}
+  {% if register %}<p>Welcome! Choose a password for LoxBridge. You'll use it to log in from now on.</p>{% endif %}
   {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-  <form method="post" action="{{ base }}/login">
-    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ next }}">
-    <label>User <input name="username" autocomplete="username" value="admin" required autocapitalize="off"></label>
+  <form method="post" action="{{ base }}/{{ 'register' if register else 'login' }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if register %}
+    <input type="text" name="username" value="admin" autocomplete="username" hidden>
+    <label>Password <input type="password" name="password" autocomplete="new-password" minlength="8" required autofocus></label>
+    <label>Repeat password <input type="password" name="repeat" autocomplete="new-password" minlength="8" required></label>
+    <button type="submit" style="width:100%">Set password</button>
+    {% else %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <input type="text" name="username" value="admin" autocomplete="username" hidden>
     <label>Password <input type="password" name="password" autocomplete="current-password" required autofocus></label>
     <button type="submit" style="width:100%">Log in</button>
+    {% endif %}
   </form>
 </article>
 {% endblock %}

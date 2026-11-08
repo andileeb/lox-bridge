@@ -176,10 +176,10 @@ class MiniserverHTTP:
             d = stack.pop()
             try:
                 entries = self.fslist(d)
-            except MiniserverError as e:
-                # Loxone refuses some system folders even to admins (sys/internal, measured on 15.x/17.x).
+            except MiniserverError as err:
+                # Loxone refuses some system folders even to admins (sys/internal, measured on 17.3).
                 # A refused root still fails: that's a user without file rights.
-                if not d or "403" not in str(e):
+                if not d or "403" not in str(err):
                     raise
                 log.info("skipping %s: the Miniserver doesn't allow listing it", d)
                 continue

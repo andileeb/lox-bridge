@@ -83,6 +83,9 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
 - Loxone epoch = 2009-01-01 (`auth.EPOCH_2009 = 1230768000`).
 - **APScheduler 3 numbers weekdays Monday=0**; `cron_triggers()` converts cron numbers to names so `1-5` means
   Mon–Fri like standard cron. Dependabot ignores APScheduler ≥ 4 (different API).
+- Measured on a real Gen 2 (17.3): `fslist sys/internal` → 403 even for admin (walk skips refused subfolders,
+  a refused root still fails); `fsget sys/sys_*.zip` (firmware language packs) and `sys/tokens.xml` → 403. Those and
+  404s (files gone since listing) are `skipped`, not errors, so backups stay "ok". ~1300 files / 430 MB.
 - Backups read each file at most once per run: unchanged size+stamp → hard link from the previous snapshot. The
   fslist stamp switches from `HH:MM` to a year after ~6 months; that only causes one extra download.
 - S3 dedup keeps a local blob index in `/work/s3index/<dest>_<ms>.txt` to avoid HEAD requests. It's rebuilt from one

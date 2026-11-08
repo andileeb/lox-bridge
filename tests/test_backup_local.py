@@ -20,8 +20,9 @@ def test_backup_hardlinks_and_retention(mock_ms, tmp_path):
     c = cfg(url, tmp_path)
     r1 = run_backup(c, "ms1", tmp_path / "work", config_export={"x": 1})
     assert r1["status"] == "partial"  # broken.log -> HTTP 500 is recorded, not fatal
-    assert [e["path"] for e in r1["errors"]] == ["log/broken.log"]
-    assert r1["downloaded"] == len(state.files) - 1
+    assert [e["path"] for e in r1["errors"]] == ["log/broken.log"]  # refused sys/internal is skipped, no error
+    readable = len(state.files) - 3  # minus broken.log, sys/internal/secret.bin, sys/tokens.xml
+    assert r1["downloaded"] == readable and r1["skipped"] == 1
     store = LocalStore("local", tmp_path / "backups")
     snap1 = store.names("ms1")[0]
     assert "_loxbridge/config.json" in store.manifest("ms1", snap1)["files"]
@@ -29,7 +30,7 @@ def test_backup_hardlinks_and_retention(mock_ms, tmp_path):
     reads = dict(state.reads)
     state.stamps["log/def.log"] = "Oct 02 08:00"  # one changed file
     r2 = run_backup(c, "ms1", tmp_path / "work")
-    assert r2["downloaded"] == 1 and r2["reused"] == len(state.files) - 2
+    assert r2["downloaded"] == 1 and r2["reused"] == readable - 1
     assert state.reads["log/def.log"] == reads["log/def.log"] + 1
     snap2 = store.names("ms1")[0]
     a = store.snapshot_dir("ms1", snap1) / "prog/sps_0001_20261001120000.zip"
@@ -41,7 +42,7 @@ def test_backup_hardlinks_and_retention(mock_ms, tmp_path):
     assert store.verify("ms1", store.names("ms1")[0], deep=True) == []
 
     n = restore(store, "ms1", snap2, tmp_path / "restore")
-    assert n == len(state.files) - 1
+    assert n == readable
     assert (tmp_path / "restore/log/def.log").read_bytes() == state.files["log/def.log"]
 
 

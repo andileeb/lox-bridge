@@ -76,6 +76,8 @@ def _run(cfg: Config, ms: Miniserver, work: Path, progress: Progress, config_exp
     result: dict = {"snapshot": snapshot, "miniserver": ms.id, "destinations": {}}
     files: dict[str, dict] = {}
     errors: list[dict] = []
+    # 403: Loxone protects it even from admins (sys/sys_*.zip language packs, sys/tokens.xml); 404: gone since listing
+    skipped: list[str] = []
     downloaded = reused = 0
     try:
         excludes = cfg.backup.excludes
@@ -98,6 +100,9 @@ def _run(cfg: Config, ms: Miniserver, work: Path, progress: Progress, config_exp
                     client.fsget(path, target)
                 except MiniserverError as e:
                     target.unlink(missing_ok=True)
+                    if str(e)[:3] in ("403", "404"):
+                        skipped.append(path)
+                        continue
                     errors.append({"path": path, "error": str(e)})
                     log.warning("%s: %s", path, e)
                     continue
@@ -122,10 +127,12 @@ def _run(cfg: Config, ms: Miniserver, work: Path, progress: Progress, config_exp
         "created": datetime.now().astimezone().isoformat(timespec="seconds"),
         "files": files,
         "errors": errors,
+        "skipped": skipped,
     }
     final = staging_store.commit(staging, manifest)
     size = sum(f["size"] for f in files.values())
-    progress(f"pulled {len(files)} files ({downloaded} downloaded, {reused} unchanged), {len(errors)} errors")
+    progress(f"pulled {len(files)} files ({downloaded} downloaded, {reused} unchanged), "
+             f"{len(skipped)} skipped, {len(errors)} errors")
 
     for d in dests:
         r: dict = {"ok": True}
@@ -146,7 +153,7 @@ def _run(cfg: Config, ms: Miniserver, work: Path, progress: Progress, config_exp
     result.update(
         status="ok" if all(ok_dests) and not errors else ("failed" if not any(ok_dests) else "partial"),
         files=len(files), downloaded=downloaded, reused=reused, size=size, errors=errors,
-        duration=round(time.monotonic() - t0, 1),
+        skipped=len(skipped), duration=round(time.monotonic() - t0, 1),
     )
     return result
 

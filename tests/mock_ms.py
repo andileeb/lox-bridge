@@ -1,5 +1,6 @@
 """Fake Gen 2 Miniserver over TLS (self-signed): HTTPS (/dev/fslist, /dev/fsget, jdev) and WebSocket
-(token auth, structure, binary value events) on one port. Basic auth admin:secret; HTTP 500 on log/broken.log.
+(token auth, structure, binary value events) on one port. Basic auth admin:secret; HTTP 500 on log/broken.log,
+403 on fslist sys/internal (like a real one).
 
   python tests/mock_ms.py --port 8081 [--extra-controls 50] [--interval 1.0]
 """
@@ -57,6 +58,8 @@ def default_files() -> dict[str, bytes]:
         "stats/" + temp[0]: temp[1],
         "stats/" + meter[0]: meter[1],
         "sys/empty.bin": b"",
+        "sys/internal/secret.bin": b"x",
+        "sys/tokens.xml": b"<tokens/>",  # real Miniservers answer 403 to fslist sys/internal, even for admin
     }
 
 
@@ -170,11 +173,15 @@ def make_handlers(state: MockState):
         if path == "/jdev/cfg/version":
             return _resp(200, ll("dev/cfg/version", state.structure["msInfo"]["swVersion"]))
         if path.startswith("/dev/fslist"):
+            if path.strip("/").endswith("sys/internal"):
+                return _resp(403, "Forbidden")
             return _resp(200, listing(state, path[len("/dev/fslist") :]))
         if path.startswith("/dev/fsget/"):
             p = path[len("/dev/fsget/") :]
             if p == "log/broken.log":
                 return _resp(500, "Internal Server Error")
+            if p == "sys/tokens.xml":
+                return _resp(403, "Forbidden")  # listed but refused, like sys/sys_*.zip on a real one
             if p not in state.files:
                 return _resp(404, "Not Found")
             state.reads[p] = state.reads.get(p, 0) + 1

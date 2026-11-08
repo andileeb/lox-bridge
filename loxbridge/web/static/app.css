@@ -129,9 +129,9 @@ details.card > summary { padding: .7rem 0; }
 .choices { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
            margin-bottom: 1rem; }
 .choice { display: flex; flex-direction: column; align-items: flex-start; gap: .15rem; margin: 0; text-align: left;
-          padding: .7rem .9rem; background: var(--pico-card-background-color); color: var(--pico-color);
+          padding: .7rem .9rem; background: var(--pico-card-background-color); color: inherit;
           border: 2px solid var(--pico-muted-border-color); }
-.choice:hover { border-color: var(--lb-green); background: var(--pico-card-background-color); color: var(--pico-color); }
+.choice:is(:hover, :focus, :active) { border-color: var(--lb-green); background: var(--pico-card-background-color); color: inherit; }
 .choice.selected { border-color: var(--lb-green); box-shadow: 0 0 0 3px var(--pico-primary-focus); }
 .choice small { color: var(--lb-muted); }
 label.choice { flex-direction: row; align-items: center; gap: .6rem; cursor: pointer; border-radius: var(--pico-border-radius); }

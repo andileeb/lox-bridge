@@ -6,6 +6,7 @@ from email.message import EmailMessage
 
 import httpx
 
+from . import activity
 from .settings.models import Notifications
 
 log = logging.getLogger(__name__)
@@ -14,10 +15,12 @@ log = logging.getLogger(__name__)
 def notify(n: Notifications, ok: bool, title: str, message: str) -> list[str]:
     """Send everything configured. Returns errors (also logged); never raises."""
     errors: list[str] = []
+    sent: list[str] = []
 
     def attempt(name: str, fn) -> None:
         try:
             fn()
+            sent.append(name)
         except Exception as e:  # noqa: BLE001
             errors.append(f"{name}: {e}")
             log.warning("notification via %s failed: %s", name, e)
@@ -27,7 +30,7 @@ def notify(n: Notifications, ok: bool, title: str, message: str) -> list[str]:
         if url:
             attempt("healthcheck", lambda: c.post(url, content=message.encode()).raise_for_status())
         if ok and n.on == "failure":
-            return errors
+            return _done(title, sent, errors)
         if n.webhook_url:
             attempt("webhook", lambda: c.post(n.webhook_url, json={"ok": ok, "title": title,
                                                                     "message": message}).raise_for_status())
@@ -54,4 +57,11 @@ def notify(n: Notifications, ok: bool, title: str, message: str) -> list[str]:
                 s.send_message(msg)
 
         attempt("smtp", mail)
+    return _done(title, sent, errors)
+
+
+def _done(title: str, sent: list[str], errors: list[str]) -> list[str]:
+    if sent or errors:
+        activity.record("notify", f"{title}: sent via {', '.join(sent) or 'nothing'}"
+                        + (f"; failed: {'; '.join(errors)}" if errors else ""), "warn" if errors else "info")
     return errors

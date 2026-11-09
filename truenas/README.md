@@ -17,7 +17,8 @@ directly as `apps` (568). Default port 30568 (free in the catalog's 30000–4000
    generated metadata in `app.yaml`; needs Linux/amd64, not Rosetta on Apple Silicon).
 3. Open a draft PR with their app template. Icon: `loxbridge/web/static/icon.svg`; screenshots: `docs/images/*-light.png`.
    Their reviewer uploads both to the TrueNAS CDN and gives you the URLs for `app.yaml` / `item.yaml`.
-4. Every LoxBridge release afterwards: bump `app_version`, the image tag + digest in `ix_values.yaml` and `version`
-   (their CI and Renovate can do the image part).
+4. Versions: the TrueNAS app `version`, `app_version` and the image tag always equal the LoxBridge release
+   (`scripts/bump-version.sh`, checked by `release.yml`). Add the image digest (`X.Y.Z@sha256:…`) in the PR; their
+   Renovate keeps it current afterwards. Their `ci.py` may bump `version` itself when metadata changes: set it back.
 
 Before that (see PLAN.md): a test restore onto a spare SD card, and a few weeks of real use.

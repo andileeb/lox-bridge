@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import __version__, logs, metrics
+from . import __version__, activity, logs, metrics
 from .backup.destinations.local import LocalStore
 from .backup.runner import BackupBusy, make_store, run_backup
 from .bridge.history import run_import
@@ -33,6 +33,7 @@ class Services:
         self.config_dir, self.work = config_dir, work_dir
         self.work.mkdir(parents=True, exist_ok=True)
         self.store = Store(config_dir)
+        activity.STORE = self.store
         self.tz_name = os.environ.get("TZ") or None
         self.tz = ZoneInfo(self.tz_name) if self.tz_name else ZoneInfo("UTC")
         self.jobs = JobManager(self.store)
@@ -60,6 +61,7 @@ class Services:
         logs.set_level(self.cfg.log_level)
         self.scheduler.start(self.cfg)
         await self.hub.apply(self.cfg)
+        activity.record("app", f"LoxBridge {__version__} started")
 
     async def stop(self) -> None:
         self.scheduler.shutdown()

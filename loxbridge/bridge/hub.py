@@ -6,7 +6,7 @@ import logging
 import time
 from pathlib import Path
 
-from .. import metrics
+from .. import activity, metrics
 from ..miniserver.structure import Structure, parse_structure
 from ..miniserver.ws import MiniserverWS
 from ..settings.models import Config, Miniserver
@@ -97,7 +97,12 @@ class Hub:
                 await s.on_structure(m.id, st)
 
         def on_connected(ok: bool, err: str) -> None:
-            self.status[m.id].update(connected=ok, error=err, since=time.time())
+            st = self.status[m.id]
+            if ok and not st["connected"]:
+                activity.record("live", f"{m.name}: connected")
+            elif not ok and (st["connected"] or st["error"] == "connecting"):  # once per outage, not per retry
+                activity.record("live", f"{m.name}: connection lost, {err}", "warn")
+            st.update(connected=ok, error=err, since=time.time())
             metrics.ws_connected.labels(m.id).set(1 if ok else 0)
 
         ws = MiniserverWS(

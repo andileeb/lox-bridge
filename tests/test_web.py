@@ -150,3 +150,30 @@ def test_test_button_uses_unsaved_form(client, mock_ms):
     assert "✘" in client.post("/miniservers/ms1/test", data=form, headers={"X-CSRF-Token": t}).text
     form["backup_password"] = ""  # empty = the stored (correct) one
     assert "login ok" in client.post("/miniservers/ms1/test", data=form, headers={"X-CSRF-Token": t}).text
+
+
+def test_activity_history(client, mock_ms, tmp_path):
+    """Logins, settings changes (names only, never secrets) and backups end up in Settings → Activity."""
+    url, _ = mock_ms
+    client.post("/login", data={"password": "wrong-one", "csrf": csrf(client, "/login")})
+    login(client)
+    t = csrf(client, "/setup")
+    client.post("/destinations/local", data={"csrf": t, "name": "Local", "enabled": "on", "keep": "3",
+                                             "path": str(tmp_path / "b")})
+    r = client.post("/setup", data={"csrf": t, "url": url, "user": "admin", "password": "secret",
+                                    "schedule": "03:00"})
+    job = r.headers["HX-Redirect"].rsplit("/", 1)[1]
+    wait_job(client, job)
+    for _ in range(50):  # the event is written right after the job reports finished
+        page = client.get("/logs").text
+        if "Backup MockMS" in page:
+            break
+        time.sleep(0.1)
+    assert "Failed login" in page and "Login from" in page
+    assert "Destination Local: keep, path" in page
+    assert "Miniserver MockMS added" in page
+    messages = " ".join(e["message"] for e in client.app.state.svc.store.events(limit=1000))
+    assert "secret" not in messages  # the Loxone password is never part of a message
+    assert f'/jobs/{job}"' in page and "Backup MockMS: partial" in page  # mock has one unreadable file
+    backups = client.get("/logs?kind=backup").text
+    assert "Backup MockMS" in backups and "Failed login" not in backups

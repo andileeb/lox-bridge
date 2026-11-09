@@ -15,6 +15,10 @@ jobs:
           test "v$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != pyproject version $v"; exit 1; }
           grep -q "__version__ = \"$v\"" loxbridge/__init__.py
           grep -q "loxbridge:$v" compose.yaml
+          # TrueNAS catalog app (truenas/loxbridge) uses the same version everywhere
+          grep -qx "version: $v" truenas/loxbridge/app.yaml
+          grep -qx "app_version: $v" truenas/loxbridge/app.yaml
+          grep -q "tag: \"$v\"" truenas/loxbridge/ix_values.yaml
       - uses: astral-sh/setup-uv@v10.3.3  # no moving major tag upstream
       - run: uv sync --locked -p 3.13
       - run: uv run ruff check loxbridge tests

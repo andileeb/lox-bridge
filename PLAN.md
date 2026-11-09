@@ -79,13 +79,12 @@ TrueNAS) via a pull request to [truenas/apps](https://github.com/truenas/apps) (
 real-Miniserver validation above has passed. Until then: Install via YAML with `compose.yaml` (folders and permissions
 are created by the container itself since v0.1.2).
 
-## Next: activity history
+## Activity history (done)
 
-A simple "what did LoxBridge do" view, e.g. under Settings → Logs: one line per event with time and outcome,
-kept for a while (e.g. 30 days / a few thousand entries in SQLite), filterable by type. Events: backups and their
-result (files, skipped, errors), restores/verify/GC, live data connected / disconnected / reconnect reasons, outputs
-failing and recovering, settings changed (what, not the secret values), logins and failed logins, notifications sent.
-Today only the last 100 jobs are kept and the rest is in the container log.
+Settings → Activity: one line per event in SQLite (`events`, 90 days / 5000 rows): job results with a link to the
+log, live data connected / lost (once per outage), outputs failing / working again, settings changes (field names
+only, never values), logins, failed logins, password and API token changes, notifications sent, app start.
+Possible later: API endpoint, CSV export, "stopped" events.
 
 ## Later
 

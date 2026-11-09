@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from pydantic import ValidationError
 
-from .. import logs
+from .. import activity, logs
 from ..app import HASHER
 from ..backup.manifest import diff
 from ..backup.runner import ms_client, restore
@@ -115,9 +115,11 @@ async def login(request: Request):
         HASHER.verify(h, f.get("password", ""))
     except VerifyMismatchError:
         LIMITER.fail(ip)
+        activity.record("security", f"Failed login from {ip}", "warn")
         return _page(request, "login.html", next=nxt, error="Wrong password.")
     request.session.clear()
     request.session["user"] = "admin"
+    activity.record("security", f"Login from {ip}")
     return redirect(request, nxt)
 
 
@@ -138,6 +140,7 @@ async def register(request: Request):
         return _page(request, "login.html", register=True, error="Passwords must match and have at least 8 characters.")
     if not s.store.set_password(HASHER.hash(pw), only_if_unset=True):
         return redirect(request, "/login")
+    activity.record("security", "Admin password set on first visit")
     request.session.clear()
     request.session["user"] = "admin"
     return redirect(request, "/")
@@ -738,9 +741,12 @@ async def notifications_test(request: Request):
 
 # --- logs and jobs --------------------------------------------------------------------------------
 @router.get("/logs")
-def logs_page(request: Request):
+def logs_page(request: Request, kind: str = "", before: int = 0):
     s = svc(request)
-    return _page(request, "logs.html", jobs=s.store.jobs(limit=100), level=s.cfg.log_level)
+    kind = kind if kind in activity.KINDS else ""
+    events = s.store.events(kind or None, before or None, limit=100)
+    return _page(request, "logs.html", events=events, kinds=activity.KINDS, kind=kind,
+                 more=events[-1]["id"] if len(events) == 100 else 0, level=s.cfg.log_level)
 
 
 @router.get("/logs/stream")
@@ -820,6 +826,7 @@ async def settings_password(request: Request):
     if len(f.get("new", "")) < 8 or f.get("new") != f.get("repeat"):
         return redirect(request, "/settings", "Error: new passwords must match and have at least 8 characters")
     s.store.set_password(HASHER.hash(f["new"]))
+    activity.record("security", "Admin password changed")
     return redirect(request, "/settings", "Password changed.")
 
 
@@ -827,12 +834,14 @@ async def settings_password(request: Request):
 async def settings_token_create(request: Request):
     name = str((await _form(request)).get("name", "")).strip() or "token"
     request.session["new_token"] = svc(request).store.create_token(name)
+    activity.record("security", f"API token {name} created")
     return redirect(request, "/settings")
 
 
 @router.post("/settings/tokens/{token_id}/delete")
 def settings_token_delete(request: Request, token_id: int):
     svc(request).store.delete_token(token_id)
+    activity.record("security", f"API token {token_id} deleted")
     return redirect(request, "/settings", "Token deleted.")
 
 

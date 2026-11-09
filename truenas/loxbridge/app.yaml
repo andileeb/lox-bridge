@@ -35,4 +35,4 @@ sources:
 - https://github.com/andileeb/lox-bridge
 title: LoxBridge
 train: community
-version: 1.0.0
+version: 0.1.6

@@ -63,7 +63,7 @@ NAV = [
     ("/bridge", "Live data", "activity", [], ("/bridge", "/sinks")),
     ("/miniservers", "Miniservers", "server", [], ("/miniservers", "/setup")),
     ("/settings", "Settings", "settings", [("/settings", "General"), ("/notifications", "Notifications"),
-                                           ("/logs", "Logs")], ("/settings", "/notifications", "/logs")),
+                                           ("/logs", "Activity")], ("/settings", "/notifications", "/logs")),
 ]
 
 

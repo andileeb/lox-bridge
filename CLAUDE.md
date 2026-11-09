@@ -26,10 +26,13 @@ E2E_BASE_URL=http://localhost:8080 uv run pytest tests/e2e   # Playwright; `uv r
 The dev stack bind-mounts `./dev-data` (runs as root there). Deleting `dev-data` while the container runs kills it →
 `docker compose -f compose.dev.yaml up -d --force-recreate loxbridge`.
 
-Release: bump the version in **three places** (`pyproject.toml`, `loxbridge/__init__.py`, image tag in `compose.yaml`),
-commit, push a `vX.Y.Z` tag → `.github/workflows/release.yml` checks they match, tests, pushes
-`ghcr.io/andileeb/loxbridge:X.Y.Z` / `X.Y` / `latest` (amd64 + arm64) and drafts a GitHub release with `compose.yaml`
-attached. Review the notes (summary + Install section, like v0.1.0) and publish.
+Release: `scripts/bump-version.sh X.Y.Z` sets the version everywhere (`pyproject.toml`, `loxbridge/__init__.py`, image
+tag in `compose.yaml`, and the TrueNAS app: `version` + `app_version` in `truenas/loxbridge/app.yaml`, image tag in
+`ix_values.yaml`; GitHub release and TrueNAS app version are always the same). Commit, push, push a `vX.Y.Z` tag →
+`.github/workflows/release.yml` checks they all match, runs ruff/mypy/tests, pushes `ghcr.io/andileeb/loxbridge:X.Y.Z` /
+`X.Y` / `latest` (amd64 + arm64) and drafts a GitHub release with `compose.yaml` attached. Review the notes (summary +
+Install section, like v0.1.0) and publish. Every push to main also publishes a preview `:edge` (+ `:sha-<commit>`).
+A pushed tag is never moved: if a release run fails, fix and release the next patch version.
 
 ## Architecture
 
@@ -58,6 +61,8 @@ attached. Review the notes (summary + Install section, like v0.1.0) and publish.
   `routes_api.py` (`/api/v1`, `/metrics`). Jinja2 + HTMX + Pico.css vendored in `web/static/`, `app.css` on top
   (mobile first: bottom tab bar < 768 px) — no JS build step.
 - `miniserver/discover.py` — LAN scan for the setup wizard (`jdev/cfg/apiKey` on /24 networks).
+- `activity.py` — `record(kind, message, level, link)` from anywhere → `Store.add_event` (Settings → Activity).
+  Settings changes are described by `store.describe_change` (field names only). Never put secrets in messages.
 - `cli.py` — `serve` (default), `once`, `list`, `restore`, `verify`, `gc`, `check [--dump DIR]`, `reset-admin`.
 
 ## Domain knowledge (hard-won, don't rediscover)

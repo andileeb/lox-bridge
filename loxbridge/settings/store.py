@@ -16,6 +16,7 @@ from typing import Any
 from cryptography.fernet import Fernet, InvalidToken
 from pydantic import SecretStr
 
+from .. import activity
 from .models import Config
 
 log = logging.getLogger(__name__)
@@ -34,7 +35,37 @@ MIGRATIONS = [
     CREATE TABLE history_progress (miniserver TEXT, file TEXT, last_ts INTEGER NOT NULL,
                                    PRIMARY KEY (miniserver, file));
     """,
+    """
+    CREATE TABLE events (id INTEGER PRIMARY KEY, ts REAL NOT NULL, kind TEXT NOT NULL, level TEXT NOT NULL,
+                         message TEXT NOT NULL, link TEXT NOT NULL DEFAULT '');
+    CREATE INDEX events_ts ON events (ts);
+    """,
 ]
+EVENTS_KEEP_DAYS, EVENTS_KEEP_MAX = 90, 5000
+
+
+def _fields(a: Any, b: Any) -> list[str]:
+    return [k for k in type(b).model_fields if getattr(a, k, None) != getattr(b, k)]  # SecretStr compares values
+
+
+def describe_change(old: Config, new: Config) -> str:
+    """'Miniserver Home: url, backup_password; Backup: schedule'. Field names only, never values."""
+    parts: list[str] = []
+    for attr, label in (("miniservers", "Miniserver"), ("destinations", "Destination"), ("sinks", "Output")):
+        o, n = {i.id: i for i in getattr(old, attr)}, {i.id: i for i in getattr(new, attr)}
+        for i in n:
+            name = getattr(n[i], "name", "") or i
+            if i not in o:
+                parts.append(f"{label} {name} added")
+            elif changed := _fields(o[i], n[i]):
+                parts.append(f"{label} {name}: {', '.join(changed)}")
+        parts += [f"{label} {getattr(o[i], 'name', '') or i} removed" for i in o if i not in n]
+    for attr, label in (("backup", "Backup"), ("notifications", "Notifications"), ("security", "Security")):
+        if changed := _fields(getattr(old, attr), getattr(new, attr)):
+            parts.append(f"{label}: {', '.join(changed)}")
+    if old.log_level != new.log_level:
+        parts.append(f"Log level {new.log_level}")
+    return "; ".join(parts)
 
 
 def load_secret_key(config_dir: Path) -> tuple[bytes, bool]:
@@ -168,6 +199,8 @@ class Store:
                     pass
             self.db.execute("INSERT OR REPLACE INTO config (id, data) VALUES (1, ?)", (json.dumps(data),))
             old, self.config = self.config, self._load()
+        if change := describe_change(old, self.config):
+            activity.record("settings", change)
         for fn in self.listeners:
             fn(old, self.config)
         return self.config
@@ -225,6 +258,23 @@ class Store:
             q, args = q + " AND target = ?", [*args, target]
         rows = self.db.execute(q + " ORDER BY started DESC LIMIT ?", (*args, limit))
         return [{**dict(r), "summary": json.loads(r["summary"] or "null")} for r in rows]
+
+    # --- activity history (loxbridge/activity.py) ------------------------------------------------
+    def add_event(self, kind: str, level: str, message: str, link: str = "") -> None:
+        with self.lock:
+            cur = self.db.execute("INSERT INTO events (ts, kind, level, message, link) VALUES (?, ?, ?, ?, ?)",
+                                  (time.time(), kind, level, message, link))
+            if (cur.lastrowid or 0) % 100 == 0:  # prune now and then, not on every insert
+                self.db.execute("DELETE FROM events WHERE ts < ? OR id <= ?",
+                                (time.time() - EVENTS_KEEP_DAYS * 86400, (cur.lastrowid or 0) - EVENTS_KEEP_MAX))
+
+    def events(self, kind: str | None = None, before: int | None = None, limit: int = 100) -> list[dict]:
+        q, args = "SELECT * FROM events WHERE 1", list[object]()
+        if kind:
+            q, args = q + " AND kind = ?", [*args, kind]
+        if before:
+            q, args = q + " AND id < ?", [*args, before]
+        return [dict(r) for r in self.db.execute(q + " ORDER BY id DESC LIMIT ?", (*args, limit))]
 
     # --- history import progress ------------------------------------------------------------------
     def history_progress(self, ms: str) -> dict[str, int]:

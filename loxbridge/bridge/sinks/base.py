@@ -4,7 +4,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 
-from ... import metrics
+from ... import activity, metrics
 from ...miniserver.structure import StateInfo, Structure
 
 log = logging.getLogger(__name__)
@@ -69,6 +69,8 @@ class Sink:
                     metrics.sink_errors.labels(self.id).inc()
                     if self.error != str(e):
                         log.warning("sink %s: %s", self.id, e)
+                        if not self.error:
+                            activity.record("output", f"{self.id}: failing, {e or type(e).__name__}", "warn")
                     self.error = str(e) or type(e).__name__
                     for p in reversed(batch):  # put back, oldest dropped first if full
                         if len(self.queue) == self.queue.maxlen:
@@ -81,6 +83,7 @@ class Sink:
                 metrics.sink_sent.labels(self.id).inc(len(batch))
                 if self.error:
                     log.info("sink %s recovered", self.id)
+                    activity.record("output", f"{self.id}: working again")
                 self.error, self.last_ok, backoff = "", time.time(), 1.0
             metrics.sink_queue.labels(self.id).set(len(self.queue))
 

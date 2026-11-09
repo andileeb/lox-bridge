@@ -53,7 +53,7 @@ svg.i { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; strok
 }
 
 /* sub-tabs inside a section */
-.tabs { display: flex; gap: .3rem; overflow-x: auto; margin: 0 0 1rem; padding-bottom: .1rem; scrollbar-width: none; }
+.tabs { display: flex; justify-content: flex-start; gap: .3rem; overflow-x: auto; margin: 0 0 1rem; padding-bottom: .1rem; scrollbar-width: none; }
 .tabs a { padding: .35rem .85rem; border-radius: 2rem; white-space: nowrap; text-decoration: none; font-size: .9rem;
           color: var(--lb-muted); border: 1px solid var(--pico-muted-border-color); }
 .tabs a.active { color: var(--pico-primary-inverse); background: var(--lb-green); border-color: var(--lb-green); }

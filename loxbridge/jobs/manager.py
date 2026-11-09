@@ -8,6 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from .. import activity
 from ..settings.store import Store
 
 log = logging.getLogger(__name__)
@@ -81,6 +82,8 @@ class JobManager:
         job.finished = time.time()
         job.percent = 100
         self.store.record_job({**job.dict(), "summary": job.summary})
+        activity.record("backup" if job.kind == "backup" else "job", _job_line(job),
+                        {"ok": "info", "partial": "warn"}.get(job.status, "error"), f"/jobs/{job.id}")
         if done:
             try:
                 r = done(job)
@@ -98,3 +101,21 @@ class JobManager:
             return self.jobs[job_id].dict()
         rows = [j for j in self.store.jobs() if j["id"] == job_id]
         return {**rows[0], "messages": [], "title": rows[0]["kind"]} if rows else None
+
+
+def _job_line(job: Job) -> str:
+    s = job.summary if isinstance(job.summary, dict) else {}
+    line = f"{job.title}: {job.status}"
+    if s.get("error"):
+        return f"{line}, {s['error']}"
+    if "files" in s:
+        line += f", {s['files']} files ({s.get('downloaded', 0)} new"
+        line += f", {s['skipped']} skipped)" if s.get("skipped") else ")"
+        if s.get("errors"):
+            line += f", {len(s['errors'])} error" + ("s" if len(s["errors"]) > 1 else "")
+    bad = [d for d, r in (s.get("destinations") or {}).items() if not r.get("ok")]
+    if bad:
+        line += f", failed: {', '.join(bad)}"
+    if "duration" in s:
+        line += f", {s['duration']} s"
+    return line

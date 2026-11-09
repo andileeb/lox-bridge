@@ -1,10 +1,26 @@
 {% extends "base.html" %}
 {% from "_macros.html" import dot %}
 {% block content %}
-<div class="page-head"><h1>Logs</h1>
+<div class="page-head"><div><h1>Activity</h1>
+  <p class="muted"><small>What LoxBridge did, newest first. Kept for 90 days.</small></p></div></div>
+<nav class="tabs" aria-label="Filter">
+  <a href="{{ base }}/logs" class="{{ 'active' if not kind }}">All</a>
+  {% for k, label in kinds.items() %}<a href="{{ base }}/logs?kind={{ k }}" class="{{ 'active' if k == kind }}">{{ label }}</a>{% endfor %}
+</nav>
+<article><div class="list">
+{% for e in events %}
+  <div class="row"><div class="grow">{{ dot({"info": "ok", "warn": "warn", "error": "err"}[e.level]) }}{% if e.link %}<a href="{{ base }}{{ e.link }}">{{ e.message }}</a>{% else %}{{ e.message }}{% endif %}
+    <small title="{{ e.ts|time }}">{{ e.ts|ago }} · {{ kinds.get(e.kind, e.kind) }}</small></div></div>
+{% else %}<p class="muted">Nothing recorded yet.</p>{% endfor %}
+</div>
+{% if more %}<p><a href="{{ base }}/logs?kind={{ kind }}&before={{ more }}">Older</a></p>{% endif %}
+</article>
+
+<details class="card"><summary>Container log (live, since the last start)</summary>
 <form method="post" action="{{ base }}/logs/level" class="actions"><input type="hidden" name="csrf" value="{{ csrf }}">
-  <select name="level" style="width:auto;margin:0" aria-label="Log level" onchange="this.form.submit()">{% for l in ["DEBUG", "INFO", "WARNING", "ERROR"] %}<option {% if l == level %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></form></div>
-<article><pre class="log" id="log"></pre></article>
+  <label style="margin:0">Detail <select name="level" style="width:auto;margin:0 0 0 .5rem" onchange="this.form.submit()">{% for l in ["DEBUG", "INFO", "WARNING", "ERROR"] %}<option {% if l == level %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label></form>
+<pre class="log" id="log"></pre>
+</details>
 <script>
 const el = document.getElementById("log");
 new EventSource("{{ base }}/logs/stream").onmessage = e => {
@@ -13,11 +29,4 @@ new EventSource("{{ base }}/logs/stream").onmessage = e => {
   if (atEnd) el.scrollTop = el.scrollHeight;
 };
 </script>
-<h2>Jobs</h2>
-<article><div class="list">
-{% for j in jobs %}
-  <div class="row"><div class="grow">{{ dot(j.status) }}<a href="{{ base }}/jobs/{{ j.id }}"><b>{{ j.title or (j.kind ~ " " ~ j.target) }}</b></a>
-    <small>{{ j.started|time }}{% if j.summary %}{% if j.summary.error %} · <span class="error">{{ j.summary.error }}</span>{% elif j.summary.files is defined %} · {{ j.summary.files }} files{% if j.summary.size is defined %}, {{ j.summary.size|size }}{% endif %}{% if j.summary.duration is defined %}, {{ j.summary.duration }} s{% endif %}{% endif %}{% endif %}</small></div></div>
-{% else %}<p class="muted">No jobs yet.</p>{% endfor %}
-</div></article>
 {% endblock %}

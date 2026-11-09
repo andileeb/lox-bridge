@@ -20,6 +20,45 @@ to backfill Grafana with the time before the proxy ran.
 - Everything is set up in the web UI (works on phone, tablet and desktop); settings live in SQLite, secrets are
   encrypted.
 
+## Screenshots
+
+(Demo data from the mock Miniserver in `tests/`.)
+
+**Overview**: last and next backup, live data status, destinations and outputs at a glance.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
+  <img src="docs/images/overview-light.png" alt="Overview with the Miniserver card, backup destinations and live data outputs">
+</picture>
+
+**Setup**: LoxBridge finds the Miniserver on the network; enter a Loxone user, pick a schedule, done.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/setup-dark.png">
+  <img src="docs/images/setup-light.png" alt="Connect a Miniserver: found Miniserver, login, backup schedule">
+</picture>
+
+**Live view**: what arrives from the Miniserver, before any output is set up.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/live-dark.png">
+  <img src="docs/images/live-light.png" alt="Live data page with connection status and the latest values">
+</picture>
+
+**Backups**: snapshots per Miniserver, browse, download as ZIP, verify, compare.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/snapshots-dark.png">
+  <img src="docs/images/snapshots-light.png" alt="Snapshot list">
+</picture>
+
+**Phone**: the same app with a bottom tab bar.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/phone-dark.png">
+  <img src="docs/images/phone-light.png" alt="Overview on a phone" width="300">
+</picture>
+
 ## Install on TrueNAS
 
 1. Apps → Discover Apps → ⋮ → **Install via YAML**, paste [`compose.yaml`](compose.yaml), replace `tank` with your
@@ -45,6 +84,9 @@ of them cost almost nothing, and they protect against deletion by the app itself
 | `TZ` | time zone for schedules and statistics timestamps |
 | `PORT`, `BASE_URL` | listen port; path prefix when running behind a reverse proxy subpath |
 | `LOXBRIDGE_<PATH>` | override any setting, e.g. `LOXBRIDGE_BACKUP__SCHEDULE=04:00`, `LOXBRIDGE_MINISERVERS__0__URL=https://…`. Overridden settings show as locked in the UI. |
+
+Preview builds of `main` (not releases): `ghcr.io/andileeb/loxbridge:edge`. An app for the official TrueNAS catalog is
+prepared in [`truenas/`](truenas/README.md) but not submitted yet.
 
 Volumes: `/config` (DB, secret key), `/backups` (local destination), `/work` (staging, S3 index, caches, exports).
 

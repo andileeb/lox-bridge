@@ -1,0 +1,38 @@
+app_version: 0.1.6
+capabilities: []
+categories:
+- backup
+changelog_url: https://github.com/andileeb/lox-bridge/releases
+date_added: '2026-11-09'
+description: Backups of the Loxone Miniserver Gen 2 SD card to local storage and S3, plus a read-only live data
+  bridge to InfluxDB, Prometheus, MQTT and webhooks.
+home: https://github.com/andileeb/lox-bridge
+host_mounts: []
+icon: https://media.sys.truenas.net/apps/loxbridge/icons/icon.svg
+keywords:
+- loxone
+- miniserver
+- smart home
+- backup
+- mqtt
+- influxdb
+- prometheus
+lib_version: 2.3.18
+lib_version_hash: ed9839f681342ae8ca5f8c4c860ae22d0845a0919f472ba780d6edbc838f2633
+maintainers:
+- email: dev@truenas.com
+  name: truenas
+  url: https://www.truenas.com/
+name: loxbridge
+run_as_context:
+- description: Container [loxbridge] can run as any non-root user and group.
+  gid: 568
+  group_name: Host group is [apps]
+  uid: 568
+  user_name: Host user is [apps]
+screenshots: []
+sources:
+- https://github.com/andileeb/lox-bridge
+title: LoxBridge
+train: community
+version: 1.0.0

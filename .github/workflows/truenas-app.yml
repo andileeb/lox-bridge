@@ -1,0 +1,36 @@
+name: TrueNAS app
+
+# Tests truenas/loxbridge (the future ix-dev/community/loxbridge in truenas/apps) with TrueNAS' own CI script:
+# render the compose file with their library, start it with Docker and wait until it's healthy.
+# Only reads truenas/apps; nothing is pushed there.
+on:
+  push:
+    branches: [main]
+    paths: ['truenas/**', '.github/workflows/truenas-app.yml']
+  pull_request:
+    paths: ['truenas/**', '.github/workflows/truenas-app.yml']
+  workflow_dispatch:
+
+jobs:
+  render-and-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: truenas/apps
+          path: tnapps
+      - name: Copy the app into the catalog checkout
+        run: cp -R truenas/loxbridge tnapps/ix-dev/community/
+      - name: Port not taken by another catalog app
+        working-directory: tnapps
+        run: python3 .github/scripts/port_validation.py
+      - name: Render, install, wait for healthy
+        working-directory: tnapps
+        run: |
+          for f in ix-dev/community/loxbridge/templates/test_values/*.yaml; do
+            python3 .github/scripts/ci.py --train community --app loxbridge --test-file "$(basename "$f")"
+          done
+      - name: Metadata the catalog CI would generate
+        working-directory: tnapps
+        run: git diff --no-index ../truenas/loxbridge/app.yaml ix-dev/community/loxbridge/app.yaml || true

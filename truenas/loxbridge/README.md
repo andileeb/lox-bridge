@@ -7,5 +7,5 @@ MQTT (with Home Assistant discovery) and webhooks.
 Open the Web UI after installing: the first visit sets the admin password, then **Get started** finds the
 Miniserver on your network and runs the first backup.
 
-Back up the Config storage (or set `SECRET_KEY` as an additional environment variable): it holds the key that
+Back up the Config storage (or set SECRET_KEY as an additional environment variable): it holds the key that
 encrypts the stored Miniserver and S3 passwords.

@@ -9,6 +9,14 @@ Backup and live data proxy for **Loxone Miniserver Gen 2**, packaged as one True
 
 Extra: **history import** of statistics files from a backup snapshot → InfluxDB (same series as the live data) or CSV,
 to backfill Grafana with the time before the proxy ran.
+
+> **Unofficial project.** LoxBridge is an independent community tool and is not affiliated with, endorsed by or in
+> any way related to [Loxone Electronics GmbH](https://www.loxone.com). "Loxone" and "Miniserver" are trademarks of
+> their respective owner.
+>
+> **Use at your own risk.** The software is provided "as is", without warranty of any kind (see [LICENSE](LICENSE)).
+> The author is not liable for lost or incomplete backups, Miniserver malfunctions, downtime or any other damage
+> resulting from its use. Restoring a backup onto a new SD card has not been tested yet.
 - Everything is set up in the web UI (works on phone, tablet and desktop); settings live in SQLite, secrets are
   encrypted.
 
@@ -182,4 +190,7 @@ amd64 and arm64, and drafts a GitHub release with `compose.yaml` attached; revie
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE). Not affiliated with Loxone Electronics GmbH. Provided as is, without warranty; use at
+your own risk.
+
+Built with the help of [Claude Code](https://claude.com/claude-code).

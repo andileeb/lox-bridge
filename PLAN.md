@@ -58,6 +58,10 @@ Basic auth).
 
 ## Still to validate on the real Miniserver
 
+Done on a real Gen 2, firmware 17.3.10.27 (2026-11-08): `/dev/fslist` and `/dev/fsget` with `autht` (token
+permission 2 and 4) and with Basic auth, admin user; a full backup (1,297 files, 432 MB) and an incremental one.
+Protected even for admin: `sys/internal/` (listing), `sys/sys_*.zip`, `sys/tokens.xml` (skipped, see CLAUDE.md).
+
 1. The real `/dev/fslist` output format: `python -m loxbridge check --dump /work/diag` saves the raw root listing,
    firmware and a sample of `prog/` and `stats/`; add the files to `tests/fixtures/`.
 2. That `autht` signing works for `/dev/fslist` and `/dev/fsget` (LoxBerry verified it for `jdev` commands), and the
@@ -74,6 +78,14 @@ TrueNAS) via a pull request to [truenas/apps](https://github.com/truenas/apps) (
 `app.yaml`, `questions.yaml`, `templates/docker-compose.yaml`, `README.md`, icon/screenshots). Do it after the
 real-Miniserver validation above has passed. Until then: Install via YAML with `compose.yaml` (folders and permissions
 are created by the container itself since v0.1.2).
+
+## Next: activity history
+
+A simple "what did LoxBridge do" view, e.g. under Settings → Logs: one line per event with time and outcome,
+kept for a while (e.g. 30 days / a few thousand entries in SQLite), filterable by type. Events: backups and their
+result (files, skipped, errors), restores/verify/GC, live data connected / disconnected / reconnect reasons, outputs
+failing and recovering, settings changed (what, not the secret values), logins and failed logins, notifications sent.
+Today only the last 100 jobs are kept and the rest is in the container log.
 
 ## Later
 

@@ -15,7 +15,7 @@
     --pico-primary: #7bd36c; --pico-primary-background: #4ca83d; --pico-primary-border: #4ca83d;
     --pico-primary-hover: #9be08f; --pico-primary-hover-background: #5fbf4f; --pico-primary-hover-border: #5fbf4f;
     --pico-primary-focus: rgba(95, 191, 79, .35); --pico-primary-underline: rgba(123, 211, 108, .5);
-    --pico-primary-inverse: #0b1a09;
+    --pico-primary-inverse: #fff;
   }
 }
 body { min-height: 100vh; display: flex; flex-direction: column; }

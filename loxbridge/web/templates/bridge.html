@@ -8,6 +8,11 @@
   <li><a dir="ltr" href="{{ base }}/sinks/new?type={{ t }}">{{ label }}</a></li>{% endfor %}</ul></details>
 </div>
 {% if not status %}<article class="flash">Live data is off. Turn on <b>Stream live data</b> for a <a href="{{ base }}/miniservers">Miniserver</a>.</article>{% endif %}
+{% if status %}
+<details class="card" open><summary><b>Live view</b> <small class="muted">· what arrives from the Miniserver, no output needed</small></summary>
+<div hx-get="{{ base }}/bridge/live?ms={{ ms }}" hx-trigger="load, every 3s [this.closest('details').open], toggle from:closest details"></div>
+</details>
+{% endif %}
 {% set st = {} %}{% for x in sink_status %}{% set _ = st.update({x.id: x}) %}{% endfor %}
 {% if sinks %}
 <article><div class="list">
@@ -52,11 +57,6 @@
 <article class="muted">Controls appear here once a Miniserver's live data connection is up.</article>
 {% endif %}
 
-{% if status %}
-<details class="card" {% if not current %}open{% endif %}><summary>Latest values</summary>
-<div hx-get="{{ base }}/bridge/live?ms={{ ms }}" hx-trigger="load, every 3s [this.closest('details').open], toggle from:closest details"></div>
-</details>
-{% endif %}
 <script>
 function shown() {
   const r = document.getElementById("f-room").value, c = document.getElementById("f-cat").value,

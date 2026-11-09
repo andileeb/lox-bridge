@@ -231,7 +231,10 @@ def make_handlers(state: MockState):
                 elif cmd == "jdev/sps/LoxAPPversion3":
                     await send(ws, 0, ll(cmd, state.structure["lastModified"]))
                 elif cmd == "data/LoxAPP3.json":
-                    await send(ws, 1, json.dumps(state.structure))
+                    body = json.dumps(state.structure)
+                    # like a real 17.3: an "estimated" header (info byte 0x80) first, then the real one
+                    await ws.send(struct.pack("<BBBBI", 3, 1, 0x80, 0, len(body) + 512))
+                    await send(ws, 1, body)
                 elif cmd == "jdev/sps/enablebinstatusupdate":
                     await send(ws, 0, ll(cmd, "1"))
                     pusher = asyncio.create_task(push_events(ws))

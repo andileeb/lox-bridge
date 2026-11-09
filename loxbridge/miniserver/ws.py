@@ -90,7 +90,7 @@ class Conn:
             if not isinstance(header, bytes) or len(header) != 8 or header[0] != 3:
                 continue  # stray frame
             ident, flags = header[1], header[2]
-            if flags & 1:  # estimated size header, the real one follows
+            if flags & 0x80:  # estimated size header, the real one follows (measured on 17.3; not bit 0)
                 continue
             if ident == KEEPALIVE or ident == OOS:
                 return ident, b""
@@ -188,6 +188,8 @@ class MiniserverWS:
                 msg = str(e) or type(e).__name__
                 if isinstance(e, websockets.exceptions.InvalidStatus):
                     msg = explain(e.response.status_code)
+                elif isinstance(e, TimeoutError):
+                    msg = "the Miniserver didn't answer in time (reconnecting)"
                 log.warning("bridge connection to %s lost: %s", self.url, msg)
                 self.on_connected(False, msg)
             if time.monotonic() - started > 60:

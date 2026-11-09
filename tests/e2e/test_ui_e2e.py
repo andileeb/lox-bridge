@@ -97,6 +97,11 @@ def test_ui_flow(tmp_path):
         dl.value.save_as(path)
         assert path.stat().st_size > 1000
 
+        # live view works before any output exists: connection status + values from the (mock) Miniserver
+        page.goto(f"{BASE}/bridge")
+        expect(page.locator("details.card")).to_contain_text("connected", timeout=30000)
+        expect(page.locator("details.card td").first).to_be_visible(timeout=15000)
+
         # outputs: MQTT (+ HA discovery) and InfluxDB, export everything in the living room
         page.goto(f"{BASE}/sinks/new?type=mqtt")
         page.click("text=Advanced")

@@ -557,8 +557,8 @@ def bridge(request: Request, sink: str = "", ms: str = ""):
 @router.get("/bridge/live")
 def bridge_live(request: Request, ms: str = ""):
     s = svc(request)
-    rows = sorted(s.hub.states(ms or None), key=lambda r: -r["ts"])[:200]
-    return render(request, "_live.html", rows=rows, now=time.time())
+    rows = sorted(s.hub.states(ms or None), key=lambda r: -r["ts"])[:50]
+    return render(request, "_live.html", rows=rows, now=time.time(), status=s.hub.status, names=s.hub.ms_names)
 
 
 @router.post("/bridge/selection")

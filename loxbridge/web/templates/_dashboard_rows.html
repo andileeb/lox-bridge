@@ -4,7 +4,7 @@
   <div class="card-head">
     <div><h3>{{ r.ms.name }}</h3><small class="muted">{{ r.ms.url }}{% if r.firmware %} · firmware {{ r.firmware }}{% endif %}</small></div>
     <form method="post" action="{{ base }}/miniservers/{{ r.ms.id }}/backup"><input type="hidden" name="csrf" value="{{ csrf }}">
-      {% if r.running %}<a role="button" class="secondary sm" href="{{ base }}/jobs/{{ r.running.id }}" aria-busy="true">Backing up…</a>
+      {% if r.running %}<a role="button" class="secondary sm" href="{{ base }}/jobs/{{ r.running.id }}" title="Show the live log"><span aria-busy="true"></span> Backing up… show log</a>
       {% elif r.ms.backup_user and r.ms.backup_enabled %}<button class="sm">{{ icon("play") }} Back up now</button>
       {% else %}<a role="button" class="outline sm" href="{{ base }}/miniservers/{{ r.ms.id }}">Set up backup</a>{% endif %}
     </form>

@@ -172,6 +172,12 @@ def make_handlers(state: MockState):
             return _resp(200, json.dumps(state.structure), "application/json")
         if path == "/jdev/cfg/version":
             return _resp(200, ll("dev/cfg/version", state.structure["msInfo"]["swVersion"]))
+        if path == "/jdev/sys/heap":
+            return _resp(200, ll("dev/sys/heap", "666392/1014416kB"))
+        if path in ("/jdev/sys/lastcpu", "/jdev/sys/numtasks"):  # like 17.3: token auth gets LL 403
+            if "autht" in query:
+                return _resp(200, ll(path[2:], "", 403))
+            return _resp(200, ll(path[2:], "CPU:23 SPS:18 Cycles:98" if path.endswith("lastcpu") else "54"))
         if path.startswith("/dev/fslist"):
             if path.strip("/").endswith("sys/internal"):
                 return _resp(403, "Forbidden")

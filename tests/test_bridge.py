@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from loxbridge import metrics
 from loxbridge.bridge.hub import Hub
 from loxbridge.bridge.sinks.base import Sink
+from loxbridge.miniserver import system
 from loxbridge.miniserver.structure import parse_structure
 from loxbridge.settings.models import Config, InfluxSink, Miniserver, PrometheusSink, WebhookSink
 
@@ -36,7 +37,7 @@ def http_recorder():
 def test_live_values_reach_sinks(mock_ms, tmp_path):
     url, state = mock_ms
     srv, influx_url = http_recorder()
-    all_controls = list(state.structure["controls"])
+    all_controls = [*state.structure["controls"], system.CONTROL]
     cfg = Config(
         miniservers=[Miniserver(id="home", name="Home", url=url, bridge_enabled=True, bridge_user="admin",
                                 bridge_password="secret")],
@@ -56,6 +57,8 @@ def test_live_values_reach_sinks(mock_ms, tmp_path):
         while time.monotonic() - t0 < 5 and not any(b"Temperature" in b for b in Recorder.bodies):
             await asyncio.sleep(0.05)
         latency = time.monotonic() - t0
+        while time.monotonic() - t0 < 5 and "system" not in hub.status["home"]:
+            await asyncio.sleep(0.05)
         await asyncio.sleep(0.5)
         status = dict(hub.status["home"])
         states = hub.states("home")
@@ -69,6 +72,9 @@ def test_live_values_reach_sinks(mock_ms, tmp_path):
     assert latency < 2.0, latency  # includes connect + token auth + structure download
     body = b"\n".join(Recorder.bodies).decode()
     assert "loxone,miniserver=home,room=Living\\ Room,category=Climate,control=Temperature,state=value" in body
+    assert status["system"]["cpu"] == 23 and status["system"]["tasks"] == 54  # Basic auth; token gets 403
+    assert any("control=Miniserver\\ system,state=cpu," in line and " value=23.0 " in line
+               for line in body.splitlines())
     assert "text=" not in body  # text states off for TSDB sinks by default
     assert any(s["uuid"] == TEMP and s["value"] is not None for s in states)
     assert any(s["state"] == "textAndIcon" and s["text"] for s in states)  # cached for API/MQTT

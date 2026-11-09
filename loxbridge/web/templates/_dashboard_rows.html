@@ -20,6 +20,7 @@
     <div><span class="label">Next backup</span><span class="value">{{ r.next|when if r.ms.backup_enabled else "off" }}</span></div>
     <div><span class="label">Live data</span>
       {% if r.bridge %}{% if r.bridge.connected %}<span class="value">{{ dot("ok") }}connected</span><small>{{ r.bridge.rate }} values/s</small>
+      {% set sy = r.bridge.system %}{% if sy %}<small title="Miniserver CPU, PLC load and memory">CPU {{ sy.cpu|int }} % · PLC {{ sy.plcLoad|int }} %{% if sy.heapTotal %} · memory {{ (100 * sy.heapUsed / sy.heapTotal)|int }} %{% endif %}</small>{% endif %}
       {% else %}<span class="value">{{ dot("err") }}offline</span><small class="error">{{ r.bridge.error }}</small>{% endif %}
       {% else %}<span class="value">{{ dot("off") }}off</span><small><a href="{{ base }}/miniservers/{{ r.ms.id }}">enable</a></small>{% endif %}</div>
   </div>

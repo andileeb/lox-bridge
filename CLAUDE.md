@@ -99,6 +99,10 @@ A pushed tag is never moved: if a release run fails, fix and release the next pa
 - **Discovery**: `jdev/cfg/apiKey` answers without login (`{'snr': '50:4F:94:..', 'version': '17.3.10.27', ...}`,
   measured). UDP search / mDNS don't cross the Docker bridge, HTTPS probes do. Scan the /24 of the Host header *and*
   of the client IP: on the dev's LAN the NAS (192.168.2.x) and the Miniserver (192.168.3.x) are in different VLANs.
+- Miniserver system status (`miniserver/system.py`): `jdev/sys/lastcpu` (`CPU:23 SPS:18 Cycles:98`) and `numtasks`
+  answer LL 403 to token auth even for admin on 17.3, Basic auth over HTTPS works; `jdev/sys/heap` works with both.
+  The hub polls them every 30 s into a made-up control "Miniserver system" (`10b51d9e-5359-5354-…`) added to every
+  structure, so outputs, Live view and the picker treat it like a real control.
 - The HTTP token cache key includes a hash of the password, otherwise a Test with a wrong password passes on the
   cached token.
 - httpx/httpcore loggers are forced to WARNING (`logs.py`): at INFO they log request URLs, which carry `autht`.

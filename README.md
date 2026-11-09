@@ -17,6 +17,8 @@ to backfill Grafana with the time before the proxy ran.
 > **Use at your own risk.** The software is provided "as is", without warranty of any kind (see [LICENSE](LICENSE)).
 > The author is not liable for lost or incomplete backups, Miniserver malfunctions, downtime or any other damage
 > resulting from its use. Restoring a backup onto a new SD card has not been tested yet.
+- **Miniserver system status**: CPU, PLC load and cycles, memory and tasks every 30 s, shown on the overview and
+  available as the control "Miniserver system" for every output (needs live data).
 - **Activity history** under Settings: backups, live data outages, failing outputs, settings changes and logins,
   kept for 90 days.
 - Everything is set up in the web UI (works on phone, tablet and desktop); settings live in SQLite, secrets are

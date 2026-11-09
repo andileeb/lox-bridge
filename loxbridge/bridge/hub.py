@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from .. import activity, metrics
+from ..miniserver import system
 from ..miniserver.structure import Structure, parse_structure
 from ..miniserver.ws import MiniserverWS
 from ..settings.models import Config, Miniserver
@@ -37,7 +38,7 @@ class Hub:
         self._tick_task: asyncio.Task | None = None
         for f in (work / "structure").glob("*.json"):  # cached structures: browse controls while offline
             try:
-                self.structures[f.stem] = parse_structure(json.loads(f.read_text()))
+                self.structures[f.stem] = system.add_to(parse_structure(json.loads(f.read_text())))
             except Exception:  # noqa: BLE001
                 log.warning("ignoring unreadable cached structure %s", f)
 
@@ -92,7 +93,7 @@ class Hub:
         self.status[m.id] = {"connected": False, "error": "connecting", "since": time.time(), "events": 0, "rate": 0}
 
         async def on_structure(st: Structure) -> None:
-            self.structures[m.id] = st
+            self.structures[m.id] = system.add_to(st)
             for s in self.sinks.values():
                 await s.on_structure(m.id, st)
 
@@ -110,7 +111,31 @@ class Hub:
             self.work / "structure" / f"{m.id}.json", on_structure,
             lambda items: self.on_values(m.id, items), lambda items: self.on_texts(m.id, items), on_connected,
         )
-        await ws.run()
+        poller = asyncio.create_task(self._poll_system(m))
+        try:
+            await ws.run()
+        finally:
+            poller.cancel()
+
+    async def _poll_system(self, m: Miniserver) -> None:
+        """CPU, PLC load, memory every 30 s as the 'Miniserver system' control (miniserver/system.py)."""
+        failed = False
+        while not self.status[m.id]["connected"]:  # structure first, or the values can't be routed to outputs
+            await asyncio.sleep(1)
+        while True:
+            try:
+                vals = await asyncio.to_thread(system.read, m.url, m.bridge_user,
+                                               m.bridge_password.get_secret_value(), m.verify_tls)
+                self.on_values(m.id, [(system.STATES[k][0], v) for k, v in vals.items()])
+                self.status[m.id]["system"] = vals
+                failed = False
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:  # noqa: BLE001 - optional extra, never affects the live data
+                if not failed:
+                    log.info("%s: system status not available: %s", m.id, e)
+                failed = True
+            await asyncio.sleep(300 if failed else 30)
 
     # --- events -----------------------------------------------------------------------------------
     def on_values(self, ms: str, items: list[tuple[str, float]]) -> None:

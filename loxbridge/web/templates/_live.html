@@ -1,6 +1,6 @@
 {% from "_macros.html" import dot %}
 <p>{% for m, x in status.items() %}<span style="margin-right:1.2rem">{{ dot("ok" if x.connected else "err") }}<b>{{ names.get(m, m) }}</b>
-  {% if x.connected %}<small class="muted">connected · {{ x.rate }} values/s · {{ x.events }} since start</small>
+  {% if x.connected %}<small class="muted">connected · {{ x.rate }} values/s · {{ x.events }} since start{% set sy = x.system %}{% if sy %} · CPU {{ sy.cpu|int }} % · PLC {{ sy.plcLoad|int }} % · {{ sy.plcCycles|int }} cycles/s{% if sy.heapTotal %} · memory {{ (100 * sy.heapUsed / sy.heapTotal)|int }} %{% endif %} · {{ sy.tasks|int }} tasks{% endif %}</small>
   {% else %}<small class="error">{{ "connecting…" if x.error == "connecting" else x.error }}</small>{% endif %}</span>{% endfor %}</p>
 <article class="scroll"><table><thead><tr><th>Control</th><th class="hide-sm">State</th><th class="hide-sm">Room</th><th class="num">Value</th><th class="num">Changed</th></tr></thead><tbody>
 {% for r in rows %}<tr><td>{{ r.control }}</td><td class="hide-sm">{{ r.state }}</td><td class="hide-sm">{{ r.room }}</td>
